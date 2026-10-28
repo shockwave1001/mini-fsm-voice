@@ -200,6 +200,7 @@ var VoicePage = (function () {
         if (!v || !v.ok) { S.starting = false; ui.talk(S); note((v && v.message) || "Voice could not start.", true); return Promise.resolve(); }
         S.provider = v.provider;
         var io = ioMod.create(v, { onPartial: partial, onFinal: final, onError: function (m) { note(m, true); },
+          onStep: function (n) { note(n === "mic" ? "Asking for the microphone…" : "Microphone on. Connecting to the speech service…"); },
           onClose: function () { var t = S.partial; if (S.io !== io) return; S.io = null; S.conv = false; S.partial = ""; ui.talk(S); note("The voice connection dropped. Tap Talk to start again.", true); if (t) heard(t); } });
         return io.start().then(function () { S.io = io; S.starting = false; S.conv = true; S.lastSpoken = ""; note(""); ui.talk(S); idle(); step(); },
           function (e) { S.starting = false; ui.talk(S); note((e && e.message) || "Could not start the microphone.", true); });
@@ -275,14 +276,16 @@ var VoicePage = (function () {
     var openedAt = Date.now(); // the tokens minted with the ticket are used only if the first tap comes soon; later a fresh set is asked for
     ctl.open(frag).then(function (r) { if (r && r.voice && r.voice.ok) window.__firstVoice = r.voice; });
     var b = $("talk"), t0 = 0, was = false;
+    // Issue 200: the press unlocks sound; Talk starts on the lift of the finger, the gesture iPhone Safari counts for the
+    // microphone and the sound context (a start on pointerdown hung at "Starting the microphone…" with no mic prompt).
     b.addEventListener("pointerdown", function (e) {
       e.preventDefault(); if (dead) return; try { b.setPointerCapture(e.pointerId); } catch (x) { /* older Safari */ }
       t0 = Date.now(); was = ctl.state.conv; if (window.VoiceIO) window.VoiceIO.unlock();
-      if (!was) { var v = Date.now() - openedAt < 60000 ? window.__firstVoice : null; window.__firstVoice = null; ctl.startTalk(v); }
     });
     b.addEventListener("pointerup", function (e) {
-      e.preventDefault(); var held = Date.now() - t0 >= HOLD_MS;
-      if (was && !held) { ctl.stopTalk(); ui.note("Voice stopped."); } else if (held && ctl.state.io) ctl.state.io.commit();
+      e.preventDefault(); if (dead) return; var held = Date.now() - t0 >= HOLD_MS;
+      if (!was) { var v = Date.now() - openedAt < 60000 ? window.__firstVoice : null; window.__firstVoice = null; ctl.startTalk(v); }
+      else if (!held) { ctl.stopTalk(); ui.note("Voice stopped."); } else if (ctl.state.io) ctl.state.io.commit();
     });
     b.addEventListener("pointercancel", function (e) { e.preventDefault(); });
     b.addEventListener("contextmenu", function (e) { e.preventDefault(); });

@@ -72,6 +72,16 @@ window.VoiceIO = (function () {
         else h.onPartial && h.onPartial(dgBuf + tx);
       } else if (m.type === "UtteranceEnd" && dgBuf) { var o2 = dgBuf; dgBuf = ""; emit(o2); }
     }
+    // Issue 200 (October 28): a step that never answers (the iPhone's mic prompt, a speech socket that neither opens nor
+    // fails) used to leave Talk on "Starting…" forever. Each step gets 15 seconds and its own message.
+    var STEP_MS = 15000;
+    function within(p, msg) {
+      return new Promise(function (resolve, reject) {
+        var t = setTimeout(function () { reject(new Error(msg)); }, STEP_MS);
+        p.then(function (v) { clearTimeout(t); resolve(v); }, function (e) { clearTimeout(t); reject(e); });
+      });
+    }
+    function step(name) { try { h.onStep && h.onStep(name); } catch (e) { /* the page paints it */ } }
     function openEar() {
       return new Promise(function (resolve, reject) {
         var e = sess.ear, terms = sess.terms || [], url, ws;
@@ -108,10 +118,11 @@ window.VoiceIO = (function () {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.reject(new Error("This browser cannot use the microphone."));
       ctx = shared || new Ctx();
-      var resume = ctx.state === "suspended" && ctx.resume ? ctx.resume() : null;
-      return Promise.resolve(resume).then(function () {
-        return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
-      }).then(function (s) {
+      // Issue 200: ask for the microphone first. On iOS a suspended context's resume() never settles without a gesture
+      // Safari counts, and waiting on it before getUserMedia meant the mic prompt never came. resume() runs after, unawaited.
+      step("mic");
+      return within(navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }), "The microphone did not answer. Tap Talk again.").then(function (s) {
+        try { if (ctx.state === "suspended" && ctx.resume) ctx.resume(); } catch (e) { /* plays once a gesture lands */ }
         stream = s; src = ctx.createMediaStreamSource(s);
         node = ctx.createScriptProcessor(4096, 1, 1);
         node.onaudioprocess = function (e) { if (open) sendAudio(toPcm16(e.inputBuffer.getChannelData(0), ctx.sampleRate, EAR_RATE)); };
@@ -178,7 +189,8 @@ window.VoiceIO = (function () {
       ear = node = src = stream = ctx = null;
     }
     function start() {
-      return openMic().then(function () { return openEar(); }).then(function (ws) { ear = ws; open = true; }).catch(function (e) { stop(); throw e; });
+      return openMic().then(function () { step("ear"); return within(openEar(), "The speech service did not answer. Check signal and tap Talk again."); })
+        .then(function (ws) { ear = ws; open = true; }).catch(function (e) { stop(); throw e; });
     }
     return { start: start, stop: stop, commit: commit, speak: speak, hush: hush, speaking: function () { return !!mouth || playing.length > 0; } };
   }
