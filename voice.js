@@ -41,6 +41,7 @@ var VoicePage = (function () {
     ["no", /^(no|nope|nah|cancel|wrong|that s wrong|don t|do not|negative)$/],
     ["next", /^(next|skip|skip it|next one|next question)$/],
     ["undo", /^(undo|undo that|undo it|take it back)$/],
+    ["read", /^(read|read it|read the card|read card|read it back|read the card back|read it to me|read me the card|read it out|read back|what s on the card)$/],
     ["mute", /^(mute|be quiet|quiet|silence)$/],
     ["unmute", /^(unmute|speak|talk to me)$/],
     ["stop", /^(done|i am done|i m done|that is all|that s all|that s it|finish|finish up|stop listening|stop|goodbye|all done)$/]
@@ -49,6 +50,28 @@ var VoicePage = (function () {
 
   function byKey(fields) { var m = {}; fields.forEach(function (f) { m[f.key] = f; }); return m; }
   function shown(f, v) { return f.kind === "money" ? fmt(money(v) || 0) : f.kind === "bool" ? (/^(true|yes|1|on|checked|done)/i.test(v) ? "yes" : "no") : String(v); }
+
+  // The client block as lines, in the order the page shows and speaks them (issue 228). Read only; it stays on the phone.
+  function infoLines(info) {
+    var i = info || {}, none = "Not on the card", out = [["Client", i.client || none], ["Address", i.address || none]];
+    var ps = i.people || [];
+    if (!ps.length) out.push(["Phone", none]);
+    ps.forEach(function (p) { out.push(["Phone", ([p.name, p.role].filter(Boolean).join(", ") || "Contact") + ": " + (p.phone || none)]); });
+    out.push(["Bill to", i.billTo || none]);
+    return out;
+  }
+  function digitsSpoken(s) { return String(s || "").replace(/[^0-9]/g, "").split("").join(" "); }
+
+  // What the page says when asked to read the card: the client block first, then the filled fields, then the next question.
+  function readCard(info, fields) {
+    var i = info || {}, none = "not on the card", parts = ["Client " + (i.client || none) + ".", "Address " + (i.address || none) + "."];
+    var ps = i.people || [];
+    if (!ps.length) parts.push("Phone " + none + ".");
+    ps.forEach(function (p) { parts.push("Phone for " + ([p.name, p.role].filter(Boolean).join(", ") || "contact") + (p.phone ? ": " + digitsSpoken(p.phone) : ", not on the card") + "."); });
+    parts.push("Bill to " + (i.billTo || none) + ".");
+    (fields || []).filter(function (f) { return f.value && f.kind !== "note"; }).forEach(function (f) { parts.push(f.label + " " + shown(f, f.value) + "."); });
+    return parts.join(" ");
+  }
 
   // The sentence the technician says yes to.
   function readBack(f, value) { return "Set " + f.label.charAt(0).toLowerCase() + f.label.slice(1) + " to " + shown(f, value) + ", yes?"; }
@@ -98,19 +121,21 @@ var VoicePage = (function () {
   // ui: { note(text, bad), question(text), transcript(text), fields(list), pending(item|null), chips(list), status(text), talk(state) }
   // io: the VoiceIO module (create, unlock); speak: (text) => Promise
   function createController(deps) {
-    var api = deps.api, ui = deps.ui, ioMod = deps.io, session = "", fields = [], lists = {}, skipped = {}, pending = [], undo = [];
+    var api = deps.api, ui = deps.ui, ioMod = deps.io, session = "", fields = [], info = null, lists = {}, skipped = {}, pending = [], undo = [];
     var S = { conv: false, starting: false, busy: false, mute: false, partial: "", last: "", lastSpoken: "", spoken: "", focus: "", ask: "", io: null, provider: "", title: "" };
 
     function setFields(f) { fields = f || fields; ui.fields(fields); }
     function note(t, bad) { ui.note(t || "", !!bad); }
     function curField() { return S.focus ? byKey(fields)[S.focus] : null; }
     function step() {
+      S.readout = "";
       var f = nextField(fields, skipped, S.ask); S.focus = f ? f.key : ""; S.ask = "";
       ui.question(question(f)); ui.pending(pending[0] || null); turn();
     }
     // What the page says next: the read-back when something waits for a yes, else the note and the question.
     function speakText() {
       if (pending[0]) return pending[0].say;
+      if (S.readout) return S.readout;
       return [S.note, question(curField())].filter(Boolean).join(" ").slice(0, 400);
     }
     function turn() { if (!S.conv) return; clearTimeout(S.tt); S.tt = setTimeout(speakNow, 120); }
@@ -162,6 +187,10 @@ var VoicePage = (function () {
       if (c === "no") { reject(); return Promise.resolve(); }
       if (c === "next") { if (pending.length) { note("Say yes or no first.", true); return Promise.resolve(); } if (S.focus) skipped[S.focus] = true; S.note = ""; step(); return Promise.resolve(); }
       if (c === "undo") return doUndo();
+      if (c === "read") {
+        if (pending.length) { note("Say yes or no first.", true); return Promise.resolve(); }
+        S.readout = readCard(info, fields) + " " + question(curField()); S.lastSpoken = ""; note("Reading the card."); turn(); return Promise.resolve();
+      }
       if (c === "mute" || c === "unmute") { setMute(c === "mute"); return Promise.resolve(); }
       if (c === "stop") { stopTalk(); note("Voice stopped. Finish the visit on the card."); return Promise.resolve(); }
       if (pending.length) { S.note = "Say yes or no first."; note(S.note, true); turn(); return Promise.resolve(); }
@@ -215,6 +244,7 @@ var VoicePage = (function () {
       return api({ action: "voiceExchange", ticket: frag.ticket, eventId: frag.eventId }).then(function (r) {
         if (!r || !r.ok) { ui.status((r && r.message) || "Could not open this visit."); ui.dead(); return null; }
         session = r.session; lists = r.lists || {}; S.title = r.model.title; S.client = r.model.client;
+        info = r.model.info || {}; ui.info(infoLines(info));
         ui.header(r.model.title, r.model.client); setFields(r.model.fields); ui.status(""); step();
         return r;
       }, function () { ui.status("Could not reach the server. Check the signal and tap Talk on the card again."); ui.dead(); return null; });
@@ -251,6 +281,11 @@ var VoicePage = (function () {
       chips: function (list) {
         var box = $("chips"); box.innerHTML = ""; box.hidden = !list.length;
         list.forEach(function (c) { var d = document.createElement("div"); d.className = "chip"; d.textContent = c.labels.join(", "); if (c.undo.length) { var b = document.createElement("button"); b.type = "button"; b.textContent = "Undo"; b.onclick = function () { ctl.undo(); }; d.appendChild(b); } box.appendChild(d); });
+      },
+      info: function (lines) {
+        var ul = $("info"); ul.innerHTML = "";
+        lines.forEach(function (l) { var li = document.createElement("li"), a = document.createElement("span"), b = document.createElement("b"); a.textContent = l[0]; b.textContent = l[1]; li.appendChild(a); li.appendChild(b); ul.appendChild(li); });
+        $("infoBox").hidden = !lines.length;
       },
       fields: function (list) {
         var ul = $("fields"), prev = ul._seen || {}; ul.innerHTML = ""; ul._seen = {};
@@ -298,7 +333,7 @@ var VoicePage = (function () {
     window.__voice = ctl;
   }
 
-  var api = { parseFragment: parseFragment, redact: redact, norm: norm, command: command, money: money, fmt: fmt, readBack: readBack, plan: plan, nextField: nextField, question: question,
+  var api = { parseFragment: parseFragment, redact: redact, norm: norm, command: command, money: money, fmt: fmt, readBack: readBack, plan: plan, nextField: nextField, question: question, infoLines: infoLines, readCard: readCard,
     createApi: createApi, createController: createController, boot: boot, UNDO_MS: UNDO_MS };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else if (typeof window !== "undefined" && typeof document !== "undefined" && document.getElementById("talk")) boot();
