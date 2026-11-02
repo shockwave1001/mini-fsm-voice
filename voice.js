@@ -15,7 +15,7 @@ var VoicePage = (function () {
 
   // ---- Pure helpers (also run by tools/run-tests.js) ----
   var UNDO_MS = 30000, IDLE_MS = 180000, HOLD_MS = 600;
-  var FIRST_PASS = ["type", "brand", "model", "serial", "issue"], FIRST_DIAG = ["diagnosis", "action"];
+  var FIRST_PASS = ["type", "brand", "model", "serial", "issue"], FIRST_DIAG = ["diagnosis", "action", "decision", "estimate", "parts"];
 
   function parseFragment(hash, local) {
     var h = String(hash || "").replace(/^#/, ""), out = {};
@@ -96,7 +96,7 @@ var VoicePage = (function () {
     var seen = {}, apps = [];
     fields.forEach(function (f) { var m = /^a(\d+)\./.exec(f.key); if (m && !seen[m[1]]) { seen[m[1]] = 1; apps.push(m[1]); } });
     for (var i = 0; i < apps.length; i++) {
-      var keys = FIRST_PASS.map(function (p) { return "a" + apps[i] + "." + p; }).concat(FIRST_DIAG.map(function (p) { return "a" + apps[i] + ".d1." + p; }));
+      var keys = FIRST_PASS.map(function (p) { return "a" + apps[i] + "." + p; }).concat(FIRST_DIAG.map(function (p) { return "a" + apps[i] + (p === "decision" ? "." : ".d1.") + p; }));
       for (var k = 0; k < keys.length; k++) { var f = map[keys[k]]; if (f && !f.value && !skipped[f.key]) return f; }
     }
     return null;
@@ -130,13 +130,15 @@ var VoicePage = (function () {
     function step() {
       S.readout = "";
       var f = nextField(fields, skipped, S.ask); S.focus = f ? f.key : ""; S.ask = "";
+      var jb = f && /\((Job [^)]*)\)$/.exec(f.label), jn = jb ? jb[1] : ""; // several jobs: name the job before its questions
+      S.intro = jn && jn !== S.job ? "Now " + jn + "." : ""; if (jn) S.job = jn;
       ui.question(question(f)); ui.pending(pending[0] || null); turn();
     }
     // What the page says next: the read-back when something waits for a yes, else the note and the question.
     function speakText() {
       if (pending[0]) return pending[0].say;
       if (S.readout) return S.readout;
-      return [S.note, question(curField())].filter(Boolean).join(" ").slice(0, 400);
+      return [S.note, S.intro, question(curField())].filter(Boolean).join(" ").slice(0, 400);
     }
     function turn() { if (!S.conv) return; clearTimeout(S.tt); S.tt = setTimeout(speakNow, 120); }
     function speakNow() {
