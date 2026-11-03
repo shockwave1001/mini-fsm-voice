@@ -398,6 +398,34 @@
   .tel { color: var(--accent); font-weight: 600; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; white-space: nowrap; }
   /* The map picker (October 13, item 18): a sheet at the foot with Waze, Google Maps, Apple Maps. */
   .tel.addr { white-space: normal; }
+  /* Client record (inbox 277): four steps, top down. A step that cannot be used yet is greyed with one line saying what enables it. */
+  .recStep { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .recStep:last-of-type { border-bottom: 0; padding-bottom: 0; }
+  .recStep .recK { font-size: 11px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .recStep .recK i { font-style: normal; width: 18px; height: 18px; border-radius: 999px; background: var(--surface-2); color: var(--ink); display: inline-grid; place-items: center; font-size: 11px; }
+  .recStep select { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 9px; min-height: 40px; font-size: 16px; }
+  .recStep select:disabled, .recActs .sm:disabled { opacity: .45; }
+  .recActs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .recActs .sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .recStep .rowWhy { font-size: 12px; margin: 0; }
+  .recPeople { display: grid; gap: 6px; }
+  .recPerson { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface-2); }
+  .recPerson.on { border-color: var(--accent); background: var(--accent-soft); }
+  .recPerson .who { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+  .recPerson .sub2 { grid-column: 1 / -1; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .recPerson .pacts { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+  .recPerson .pacts .sm { min-height: 34px; padding: 5px 11px; font-size: 13px; }
+  .recPeopleHd { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .recNone { font-size: 13px; color: var(--muted); }
+  .recDlg .mpin { max-height: 88vh; overflow: auto; }
+  .recDlg .mpin h3 { margin: 0; font-size: 15px; }
+  .recDlg .f input, .recDlg .f select { min-height: 44px; }
+  .recDlg .rdrow { display: flex; gap: 8px; }
+  .recDlg .rdrow button { flex: 1; min-height: 46px; border-radius: 10px; font-size: 15px; font-weight: 600; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
+  .recDlg .rdrow button.go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .recDlg .rdrow button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .recDlg .rdmsg { font-size: 13px; color: var(--danger); margin: 0; }
+  .recDlg .rdmsg:empty { display: none; }
   .mapPick { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .35); display: flex; align-items: flex-end; }
   .mapPick .mpin { width: 100%; max-width: 520px; margin: 0 auto; background: var(--surface); border-radius: 14px 14px 0 0; padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; }
   .mapPick .mpaddr { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
@@ -854,6 +882,36 @@
     <div class="banner warn gate" id="waiverGate" hidden><span id="waiverGateText"></span><div class="gacts"><button class="sm" type="button" id="gateSign">Get signature</button><button class="sm" type="button" id="gateAnyway" hidden>Start anyway</button></div></div>
   </div>
 
+  <details class="sec" open id="recSec">
+    <summary><span>🗂</span><span class="t">Client record</span><span class="st ok" id="recSt">Set</span><span class="chev">▼</span></summary>
+    <div class="b">
+      <div class="recStep">
+        <div class="recK"><i>1</i>Bill to</div>
+        <select id="recBill" aria-label="Bill to"><option value="">Choose who pays</option><option selected>URI</option><option>Ronnyl Esponal (homeowner)</option></select>
+        <div class="recActs"><button class="sm" type="button" id="recBillAdd">Add</button><button class="sm" type="button" id="recBillChange">Change</button><button class="sm" type="button" id="recBillDel">Remove</button></div>
+        <p class="rowWhy" id="recBillWhy"></p>
+      </div>
+      <div class="recStep">
+        <div class="recK"><i>2</i>Service address</div>
+        <select id="recAddr" aria-label="Service address"><option value="">Choose a building</option><option selected>12-34 56th St, Queens</option><option>9 Test Ave, Brooklyn</option></select>
+        <div class="recActs"><button class="sm" type="button" id="recAddrAdd">Add</button><button class="sm" type="button" id="recAddrChange">Change</button><button class="sm" type="button" id="recAddrDel">Remove</button></div>
+        <p class="rowWhy" id="recAddrWhy"></p>
+      </div>
+      <div class="recStep">
+        <div class="recK"><i>3</i>Location at the address</div>
+        <select id="recLoc" aria-label="Location at the address"><option value="">Choose a unit or place</option><option>No unit (a house or the whole building)</option><option selected>Apt 6H</option><option>Apt 2A</option><option>Basement (place)</option></select>
+        <div class="recActs"><button class="sm" type="button" id="recLocAdd">Add</button><button class="sm" type="button" id="recLocChange">Change</button><button class="sm" type="button" id="recLocDel">Remove</button></div>
+        <p class="rowWhy" id="recLocWhy"></p>
+      </div>
+      <div class="recStep">
+        <div class="recK"><i>4</i>Contacts</div>
+        <div class="recPeople" id="recPeople"><div class="recPeopleHd">At Apt 6H</div><div class="recPerson on"><div class="who">Pat Lane<span class="tag">tenant</span></div><button class="sm" type="button">On this job</button><div class="sub2">212-555-0101</div><div class="pacts"><button class="sm" type="button">Change</button><button class="sm" type="button">Remove</button></div></div><div class="recPeopleHd">Elsewhere in the building (Apt 2A)</div><div class="recPerson"><div class="who">Lou Gray<span class="tag">super</span></div><button class="sm" type="button">Use on job</button><div class="pacts"><button class="sm" type="button">Change</button><button class="sm" type="button">Remove</button></div></div><div class="recPeopleHd">URI management</div><div class="recPerson"><div class="who">Maya Park<span class="tag">manager</span></div><button class="sm" type="button">Use on job</button><div class="sub2">212-555-0150</div><div class="pacts"><button class="sm" type="button" disabled>Change</button><button class="sm" type="button" disabled>Remove</button></div><div class="sub2">Edit management contacts in Setup.</div></div></div>
+        <div class="recActs"><button class="sm" type="button" id="recPerAdd">Add contact</button></div>
+        <p class="rowWhy" id="recPerWhy"></p>
+      </div>
+    </div>
+  </details>
+
   <details class="sec" open id="applSec">
     <summary><span>⚙</span><span class="t">Appliance info</span><span class="badge">Required</span><span class="chev">▼</span></summary>
     <div class="b" id="appliances">
@@ -1156,6 +1214,14 @@
     <div class="mpaddr">Several parts on that image. Tap the one to fill.</div>
     <div id="partPickList" style="display:grid;gap:6px"></div>
     <button type="button" class="mpcancel" id="partPickCancel">Cancel</button>
+  </div>
+</div>
+<div class="mapPick recDlg" id="recDlg" hidden role="dialog" aria-label="Client record">
+  <div class="mpin">
+    <h3 id="rdTitle"></h3>
+    <div id="rdFields" style="display:grid;gap:8px"></div>
+    <p class="rdmsg" id="rdMsg"></p>
+    <div class="rdrow"><button type="button" id="rdCancel">Cancel</button><button type="button" class="go" id="rdGo">Save</button></div>
   </div>
 </div>
 <div class="mapPick" id="mapPick" hidden role="dialog" aria-label="Open the address in">
