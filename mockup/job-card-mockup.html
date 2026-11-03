@@ -42,6 +42,13 @@
   .r2 small { font-family: monospace; font-size: 11px; color: var(--muted); }
   .r2 .acts { margin-left: auto; display: flex; gap: 4px; position: relative; }
   .r2 .sm { padding: 5px 8px; }
+  /* Inbox 283: Undo and Redo in the head next to the save marker; greyed when there is nothing to step to. */
+  .r2 .ur { display: flex; gap: 3px; flex: none; }
+  .r2 .ur .sm { padding: 3px 6px; font-size: 11px; line-height: 1.2; white-space: nowrap; }
+  .r2 .ur .sm:disabled { opacity: .45; }
+  .utoast { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 60; display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--ink); color: var(--surface); border-radius: 12px; font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+  .utoast span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .utoast button { flex: none; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 800; text-decoration: underline; padding: 6px 8px; }
   /* Item 59: the ⋮ menu button, as tall as SMS and Email (the row stretches it), a larger glyph, the app's green. */
   .r2 #menuBtn { display: grid; place-items: center; min-width: 38px; padding: 0 10px; font-size: 20px; font-weight: 700; line-height: 1; color: var(--accent); background: var(--accent-soft); border-color: var(--accent-soft); }
   .addr { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); margin-top: 6px; }
@@ -752,7 +759,7 @@
     </div>
     <div class="r2">
       <small>#A1B2C3D4</small>
-      <span class="saved">✓ Saved</span><span class="saved notsync" title="Calendar done. Notes pending: no answer, tried again every hour. List failed: no customer row found.">Calendar done; notes pending, no answer; list failed, no customer row found</span>
+      <span class="saved">✓ Saved</span><span class="ur"><button class="sm" type="button" title="Undo: Contact removed: Raul">↩️ Undo</button><button class="sm" type="button" disabled title="Nothing to redo. Redo comes after an Undo.">↪️ Redo</button></span><span class="saved notsync" title="Calendar done. Notes pending: no answer, tried again every hour. List failed: no customer row found.">Calendar done; notes pending, no answer; list failed, no customer row found</span>
       <div class="acts">
         <button class="sm" type="button" aria-label="Email client" title="Email">✉ Email</button>
         <button class="sm" type="button" id="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Job actions">⋮</button>
