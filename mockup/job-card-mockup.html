@@ -553,6 +553,7 @@
   .oj .m small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .oj .sm { flex: none; padding: 7px 12px; font-weight: 600; }
   .woRow { align-items: end; }
+  .lk .lkIss { display: block; color: var(--muted); }
   .linkRow { display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 12px; margin-top: -4px; } /* item 64c: Link to earlier job; Remove on the right of the same line (Elad, October 30: the two stacked rows wasted the screen) */
   .linkBox { border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); padding: 8px 10px; display: grid; gap: 6px; }
   .linkBox .lh { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -862,10 +863,10 @@
         <div class="linkRow"><button type="button" class="lnk" data-link-job>Link to earlier job…</button><button type="button" class="lnk danger" data-remove>Remove</button></div>
         <div class="linkBox" hidden>
           <div class="lh">Jobs at this address or for this client</div>
-          <div class="lk"><div class="oj"><div class="m"><b><span>Job 1031</span> · LG Dryer · Works properly</b><small>Oct 3 visit · same address</small></div><button type="button" class="sm" data-link-pick="closed">Link</button></div>
+          <div class="lk"><div class="oj"><div class="m"><b><span>Job 1031</span> · Dryer 65 · LG · Works properly</b><small>Oct 3 visit · same address</small><small class="lkIss">Stops mid cycle, no heat</small></div><button type="button" class="sm" data-link-pick="closed">Link</button></div>
             <div class="lchoice" hidden><button type="button" class="sm" data-link-reopen>Reopen Job 1031</button><button type="button" class="sm go" data-link-callback>Callback on Job 1031</button></div>
             <div class="lwhy" hidden><textarea rows="2" placeholder="Reason (required). It goes in Job History."></textarea><div class="lchoice"><button type="button" class="sm go" data-link-reopen-go>Reopen job</button></div></div></div>
-          <div class="lk"><div class="oj"><div class="m"><b><span>Job 1043</span> · Bosch Dishwasher · Waiting on 1 of 1 part</b><small>Oct 17 visit · same client</small></div><button type="button" class="sm" data-link-pick="open">Link</button></div></div>
+          <div class="lk"><div class="oj"><div class="m"><b><span>Job 1043</span> · Bosch Dishwasher · Waiting on 1 of 1 part</b><small>Oct 17 visit · same client</small><small class="lkIss">Not draining</small></div><button type="button" class="sm" data-link-pick="open">Link</button></div></div>
           <button type="button" class="lnk" data-link-close>Cancel</button>
         </div>
         <div class="g2 typeRow">
