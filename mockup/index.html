@@ -233,7 +233,7 @@
   .sw input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); transition: left .15s; }
   .sw input:checked { background: var(--accent); }
   .sw input:checked::after { left: 16px; }
-  .part .ticks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .part .ticks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   .part .ticks .sw { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 12px; }
   /* Item 97 (October 23): a part folds to one line: name, number, internal cost and three dots for Ordered, Arrived, Installed. */
   .part .pline { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; overflow: hidden; min-height: 40px; border: 0; background: transparent; padding: 0; margin: -4px 0; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
@@ -243,6 +243,13 @@
   .part .pline .pdots { flex: none; display: inline-flex; gap: 3px; }
   .part .pline .pdots i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); }
   .part .pline .pdots i.on { background: var(--accent); border-color: var(--accent); }
+  .part .pline .poffTag { flex: none; font-size: 12px; color: var(--muted); }
+  .part .poffMsg { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+  .part .poffMsg:empty { display: none; }
+  .part.off > .g2, .part.off .pline .pl1, .part.off .pline .pl2, .part.off .pline .pl3 { opacity: .5; }
+  .part.off .pline .pl1 { text-decoration: line-through; }
+  .part.off .ticks .sw:not(:last-child) { opacity: .45; }
+  .part.off .ticks .sw:not(:last-child) input { cursor: not-allowed; }
   .part .pline .chev { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 10px; font-weight: 700; transform: rotate(180deg); transition: transform .15s; }
   .part.fold .pline .chev { transform: none; }
   .part.fold > :not(.pline) { display: none !important; }
@@ -967,7 +974,7 @@
   </template>
   <template id="partTpl">
     <div class="item part" style="background:var(--surface)">
-      <button type="button" class="pline" data-part-toggle aria-expanded="true"><span class="pl1">Part</span><span class="pl2"></span><span class="pl3"></span><span class="pdots" aria-hidden="true"><i data-dot="ordered"></i><i data-dot="arrived"></i><i data-dot="installed"></i></span><span class="chev" aria-hidden="true">▼</span></button>
+      <button type="button" class="pline" data-part-toggle aria-expanded="true"><span class="pl1">Part</span><span class="pl2"></span><span class="pl3"></span><span class="pdots" aria-hidden="true"><i data-dot="ordered"></i><i data-dot="arrived"></i><i data-dot="installed"></i></span><span class="poffTag" hidden></span><span class="chev" aria-hidden="true">▼</span></button>
       <div class="ih"><span>Part<button type="button" class="help" data-help="Parts ticks" aria-label="What the parts ticks mean">?</button></span><span><button type="button" class="partPhotoBtn" data-part-photo>📷 From photo</button> <button type="button" data-remove>Remove</button></span></div>
       <input type="file" accept="image/*" class="partPhotoIn" aria-hidden="true" tabindex="-1">
       <p class="partMsg" hidden></p>
@@ -977,7 +984,8 @@
         <label class="f"><span>Client price (USD)</span><input type="number" class="pPrice" min="0" step="0.01"></label>
         <label class="f"><span>Internal cost (USD) · internal only</span><input type="number" class="pCost" min="0" step="0.01"></label>
       </div>
-      <div class="ticks"><label class="sw">Ordered <input type="checkbox" data-ordered></label><label class="sw">Arrived <input type="checkbox" data-arrived></label><label class="sw">Installed <input type="checkbox" data-installed></label></div>
+      <div class="ticks"><label class="sw">Ordered <input type="checkbox" data-ordered></label><label class="sw">Arrived <input type="checkbox" data-arrived></label><label class="sw">Installed <input type="checkbox" data-installed></label><label class="sw">Not relevant <input type="checkbox" data-notrel></label></div>
+      <p class="poffMsg"></p>
     </div>
   </template>
 
@@ -1522,6 +1530,12 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
     $(".pl1", p).textContent = name || "Part"; $(".pl2", p).textContent = num; $(".pl3", p).textContent = cost !== "" && !isNaN(Number(cost)) ? fmt(cost) : "";
     [["ordered", "[data-ordered]"], ["arrived", "[data-arrived]"], ["installed", "[data-installed]"]].forEach(([k, sel]) => $(".pdots i[data-dot=" + k + "]", p).classList.toggle("on", $(sel, p).checked));
     $(".pline", p).setAttribute("aria-expanded", String(!p.classList.contains("fold")));
+    // Inbox 262: Not relevant greys the row and its three switches, keeps their values, and says why in one line.
+    const off = $("[data-notrel]", p).checked;
+    p.classList.toggle("off", off);
+    ["[data-ordered]", "[data-arrived]", "[data-installed]"].forEach((sel) => { $(sel, p).disabled = off; });
+    $(".pdots", p).hidden = off; $(".poffTag", p).hidden = !off; $(".poffTag", p).textContent = off ? "Not relevant" : "";
+    $(".poffMsg", p).textContent = off ? "Not relevant: not used on this job" : "";
   }
   document.addEventListener("input", (e) => { const p = e.target.closest && e.target.closest(".part"); if (p) paintPartLine(p); });
   document.addEventListener("change", (e) => { const p = e.target.closest && e.target.closest(".part"); if (p) paintPartLine(p); });
