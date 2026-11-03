@@ -107,6 +107,74 @@ var VoicePage = (function () {
     return f.label.replace(/ \(.*\)$/, "") + (/\(/.test(f.label) ? " for " + /\((.*)\)$/.exec(f.label)[1] : "") + "?";
   }
 
+
+  // ---- The client record walk (inbox 288): Bill to, Service address, Location, Contacts, Appliance, Job ----
+  // Matching and the add, change and remove forms run here on the phone. Nothing of the record goes to Claude.
+  var FILLER = { the: 1, a: 1, an: 1, pick: 1, choose: 1, select: 1, it: 1, is: 1, its: 1, number: 1, for: 1, at: 1, in: 1, on: 1, to: 1, this: 1, one: 0 };
+  var UNIT_WORD = /^(apt|apartment|unit|suite|ste|fl|floor|rm|room)\b\.?\s*/;
+  var ROLES = ["contact", "owner", "manager", "tenant", "landlord", "super"];
+  var REC_FORMS = {
+    address: [["street", "Street", true], ["city", "City"]],
+    location: [["name", "Name of the unit or place, for example Apt 2F or Basement", true]],
+    contact: [["name", "Name", true], ["role", "Role: super, manager, tenant, owner, or landlord"]],
+    appliance: [["name", "Name, for example Dryer 65", true], ["brand", "Brand"], ["type", "Type"], ["model", "Model"], ["serial", "Serial number"]]
+  };
+  var ABBR = { street: "st", avenue: "ave", road: "rd", boulevard: "blvd", place: "pl", drive: "dr", lane: "ln", court: "ct", apartment: "apt" };
+  function abbr(s) { return norm(s).split(" ").map(function (w) { return ABBR[w] || w; }).join(" "); }
+  function compact(s) { return abbr(s).replace(UNIT_WORD, "").replace(/[^a-z0-9]/g, ""); }
+  function recVerb(text) {
+    var n = String(text || "").replace(/\s+/g, " ").replace(/[.,!?]+$/, "").trim(), m = /^(add|new|create)(?: (?:a|an|new))*\b ?(.*)$/i.exec(n);
+    if (m) return { verb: "add", rest: m[2] };
+    m = /^(change|edit|rename|fix|update)\b ?(.*)$/i.exec(n); if (m) return { verb: "change", rest: m[2] };
+    m = /^(remove|delete|drop|take off)\b ?(.*)$/i.exec(n); if (m) return { verb: "remove", rest: m[2] };
+    return { verb: "", rest: n };
+  }
+  // One spoken name against a step's items: { hit } | { many: [items] } | { none: true }.
+  function recMatch(step, text) {
+    var items = (step && step.items) || [], t = abbr(text);
+    if (step && step.key === "location" && /^(none|no unit|no location|house|the house|whole building|the whole building)$/.test(t)) { var z = items.filter(function (i) { return i.id === "none"; })[0]; if (z) return { hit: z }; }
+    var ws = words(t).filter(function (w) { return !FILLER[w]; });
+    if (!ws.length || !items.length) return { none: true };
+    var spoken = compact(ws.join(" "));
+    var exact = items.filter(function (i) { return compact(i.label) === spoken; });
+    if (exact.length === 1) return { hit: exact[0] };
+    var part = items.filter(function (i) {
+      var lw = abbr(i.label + " " + (i.sub || "")).split(" "), lc = compact(i.label);
+      return ws.every(function (w) { return lw.some(function (x) { return x === w || (w.length >= 3 && x.indexOf(w) === 0); }); }) || (spoken.length >= 3 && lc.indexOf(spoken) > -1);
+    });
+    if (part.length === 1) return { hit: part[0] };
+    if (part.length > 1) return { many: part };
+    return { none: true };
+  }
+  function recPicked(step) { return !!(step && step.picked); }
+  // The first step still to ask: usable, nothing picked, not skipped or done, and something to pick or a way to add.
+  function nextRecStep(rec, skipped, done) {
+    for (var i = 0; i < (rec || []).length; i++) {
+      var st = rec[i];
+      if (st.on && !recPicked(st) && !skipped["rec:" + st.key] && !done[st.key] && (st.items.length || st.edit)) return st;
+    }
+    return null;
+  }
+  function recQuestion(st) {
+    var names = (st.items || []).slice(0, 5).map(function (i) { return i.label; });
+    var opts = names.length ? " " + names.join(", ") + (st.items.length > 5 ? ", and " + (st.items.length - 5) + " more" : "") + "." : " " + (st.none || "");
+    return st.title + "?" + opts + (st.key === "job" ? " Say one to continue it, or next." : st.edit ? " Say a name, add, or next." : " Say a name, or next.");
+  }
+  function cleanVal(key, v) {
+    var s = String(v || "").replace(/\s+/g, " ").trim().replace(/[.,!?]+$/, "");
+    if (key === "model" || key === "serial") return s.toUpperCase().replace(/\s+/g, "");
+    if (key === "role") { var r = norm(s); return ROLES.filter(function (x) { return r === x || r === "the " + x || r.indexOf(x) > -1; })[0] || "contact"; }
+    return s;
+  }
+  // A unit like 2F or Apt 3B is a unit; Basement or Laundry room is a place.
+  function locKind(name) { return /^(apt|apartment|unit|suite|ste|fl|floor|rm|room)\b|^\d/.test(norm(name)) ? "unit" : "place"; }
+  function formPrompt(f) {
+    if (f.reason) return "Why are you removing " + (f.name || "it") + "?";
+    var fld = REC_FORMS[f.step][f.idx], cur = f.mode === "change" ? String((f.vals || {})[fld[0]] || "") : "";
+    if (f.mode === "change") return fld[1] + (cur ? " is " + cur + ". Say the new one, or skip." : "? Say it, or skip.");
+    return fld[1] + (fld[2] ? "?" : "? Say skip to leave it blank.");
+  }
+
   // ---- The server, over a plain text POST ----
   function createApi(app, fetchFn) {
     var f = fetchFn || (typeof fetch !== "undefined" ? fetch.bind(window) : null);
@@ -122,24 +190,27 @@ var VoicePage = (function () {
   // ui: { note(text, bad), question(text), transcript(text), fields(list), pending(item|null), chips(list), status(text), talk(state) }
   // io: the VoiceIO module (create, unlock); speak: (text) => Promise
   function createController(deps) {
-    var api = deps.api, ui = deps.ui, ioMod = deps.io, session = "", fields = [], info = null, lists = {}, skipped = {}, pending = [], undo = [];
-    var S = { conv: false, starting: false, busy: false, mute: false, partial: "", last: "", lastSpoken: "", spoken: "", focus: "", ask: "", io: null, provider: "", title: "" };
+    var api = deps.api, ui = deps.ui, ioMod = deps.io, session = "", fields = [], info = null, lists = {}, skipped = {}, pending = [], undo = [], rec = [], recDone = {};
+    var S = { conv: false, starting: false, busy: false, mute: false, partial: "", last: "", lastSpoken: "", spoken: "", focus: "", ask: "", io: null, provider: "", title: "", form: null, force: "", appl: "", q: "" };
 
     function setFields(f) { fields = f || fields; ui.fields(fields); }
     function note(t, bad) { ui.note(t || "", !!bad); }
     function curField() { return S.focus ? byKey(fields)[S.focus] : null; }
     function step() {
       S.readout = "";
-      var f = nextField(fields, skipped, S.ask); S.focus = f ? f.key : ""; S.ask = "";
+      var fk = S.force; if (fk && (skipped["rec:" + fk] || recDone[fk])) { fk = S.force = ""; }
+      var rs = S.form ? null : fk ? recStep(fk) : nextRecStep(rec, skipped, recDone);
+      var f = rs || S.form ? null : nextField(fields, skipped, S.ask); S.focus = S.form ? "rec:" + S.form.step : rs ? "rec:" + rs.key : f ? f.key : ""; S.ask = "";
       var jb = f && /\((Job [^)]*)\)$/.exec(f.label), jn = jb ? jb[1] : ""; // several jobs: name the job before its questions
       S.intro = jn && jn !== S.job ? "Now " + jn + "." : ""; if (jn) S.job = jn;
-      ui.question(question(f)); ui.pending(pending[0] || null); turn();
+      S.q = S.form ? formPrompt(S.form) : rs ? recQuestion(rs) : question(f);
+      ui.question(S.q); ui.pending(pending[0] || null); turn();
     }
     // What the page says next: the read-back when something waits for a yes, else the note and the question.
     function speakText() {
       if (pending[0]) return pending[0].say;
       if (S.readout) return S.readout;
-      return [S.note, S.intro, question(curField())].filter(Boolean).join(" ").slice(0, 400);
+      return [S.note, S.intro, S.q].filter(Boolean).join(" ").slice(0, 400);
     }
     function turn() { if (!S.conv) return; clearTimeout(S.tt); S.tt = setTimeout(speakNow, 120); }
     function speakNow() {
@@ -182,21 +253,91 @@ var VoicePage = (function () {
       return save(it.undo, true, true).then(function () { S.note = it.labels.join(", ") + " put back."; note(S.note); });
     }
 
+
+    // ---- The record walk ----
+    function recStep(key) { return rec.filter(function (x) { return x.key === key; })[0] || null; }
+    function recApply(r) {
+      if (r.steps) { rec = r.steps; var ap = recStep("appliance"); S.appl = ap && ap.picked ? ap.picked : ""; if (ui.record) ui.record(rec); }
+      if (r.info) { info = r.info; ui.info(infoLines(info)); }
+      if (r.title !== undefined) ui.header(r.title, r.client);
+      if (r.fields) setFields(r.fields);
+    }
+    function recSend(body, key, doneOnOk) {
+      S.busy = true; ui.talk(S);
+      return api(Object.assign({ action: "voiceRecord", session: session, appl: S.appl }, body)).then(function (r) {
+        S.busy = false;
+        if (!r || !r.ok) { S.note = (r && r.message) || "Could not do that."; note(S.note, true); ui.talk(S); if (r && r.expired) return; step(); return; }
+        recApply(r); S.form = null; S.force = ""; if (doneOnOk) recDone[key] = true;
+        S.note = r.say || ""; note(S.note); ui.talk(S); step();
+      }, function () { S.busy = false; S.note = "No signal. Nothing was changed."; note(S.note, true); ui.talk(S); step(); });
+    }
+    function startForm(mode, st, target, first) {
+      var f = { mode: mode, step: st.key, id: target ? target.id : "", vals: {}, idx: 0, name: target ? target.label : "" };
+      if (mode === "change") f.vals = Object.assign({}, target.v || {});
+      if (mode === "remove") { S.form = f; f.reason = true; S.note = ""; step(); return Promise.resolve(); }
+      if (mode === "add" && first) { f.vals[REC_FORMS[st.key][0][0]] = cleanVal(REC_FORMS[st.key][0][0], first); f.idx = 1; }
+      S.form = f; S.note = ""; return formNext();
+    }
+    function formNext() {
+      var f = S.form; if (!f) return Promise.resolve();
+      if (f.idx < REC_FORMS[f.step].length) { step(); return Promise.resolve(); }
+      var v = Object.assign({}, f.vals);
+      if (f.step === "location") v.kind = locKind(v.name);
+      return recSend({ op: f.mode, step: f.step, id: f.id, value: v }, f.step, true);
+    }
+    function formHeard(t) {
+      var f = S.form;
+      var c = command(t);
+      if (c === "no") { S.form = null; S.note = "Cancelled."; note(S.note); step(); return Promise.resolve(); }
+      if (f.reason) { return recSend({ op: "remove", step: f.step, id: f.id, reason: cleanVal("reason", t) }, f.step, true); }
+      var fld = REC_FORMS[f.step][f.idx];
+      if (c === "next") {
+        if (fld[2] && !f.vals[fld[0]]) { S.note = "That one is needed. Say it, or say no to cancel."; note(S.note, true); step(); return Promise.resolve(); }
+        f.idx++; return formNext();
+      }
+      f.vals[fld[0]] = cleanVal(fld[0], t); f.idx++; return formNext();
+    }
+    function itemsNamed(st, rest) {
+      var m = rest ? recMatch(st, rest) : { none: true };
+      if (m.hit) return m.hit;
+      var one = st.key === "contact" ? st.items.filter(function (i) { return i.on && i.i >= 0; }) : st.items.filter(function (i) { return i.id === st.picked; });
+      return !rest && one.length === 1 ? one[0] : null;
+    }
+    function recHeard(t) {
+      var key = S.focus.slice(4), st = recStep(key); if (!st) return Promise.resolve();
+      var v = recVerb(t);
+      if (v.verb && !st.edit) { S.note = st.key === "bill" ? "Add or change clients in Setup. Say a name to pick another." : "A job comes from the record. Say one to link it."; note(S.note, true); step(); return Promise.resolve(); }
+      if (v.verb === "add") return startForm("add", st, null, v.rest);
+      if (v.verb === "change" || v.verb === "remove") {
+        var tg = itemsNamed(st, v.rest);
+        if (!tg || (st.key === "location" && tg.id === "none")) { S.note = "Say " + v.verb + " and the name."; note(S.note, true); step(); return Promise.resolve(); }
+        if (st.key === "contact" && tg.i < 0) { S.note = tg.label + " belongs to the client. Change it in Setup."; note(S.note, true); step(); return Promise.resolve(); }
+        return startForm(v.verb, st, tg, "");
+      }
+      var m = recMatch(st, t);
+      if (m.hit) return recSend({ op: "pick", step: key, id: m.hit.id }, key, true);
+      if (m.many) { S.note = "Which one? " + m.many.slice(0, 4).map(function (i) { return i.label; }).join(", ") + "."; note(S.note, true); step(); return Promise.resolve(); }
+      S.note = "I did not find that." + (st.edit ? " Say add to add it, or next." : " Say next to skip."); note(S.note, true); step(); return Promise.resolve();
+    }
+    function focusRec(key) { var st = recStep(key); if (!st || !st.on) return; delete skipped["rec:" + key]; delete recDone[key]; S.force = key; S.form = null; S.note = ""; S.lastSpoken = ""; step(); }
+
     function heard(text) {
       var t = redact(String(text || "").replace(/\s+/g, " ").trim()); S.last = t; ui.transcript(t); idle();
       if (!t) return Promise.resolve();
       var c = command(t);
+      if (S.form && c !== "stop" && c !== "mute" && c !== "unmute") return formHeard(t);
       if (c === "yes") return accept();
       if (c === "no") { reject(); return Promise.resolve(); }
-      if (c === "next") { if (pending.length) { note("Say yes or no first.", true); return Promise.resolve(); } if (S.focus) skipped[S.focus] = true; S.note = ""; step(); return Promise.resolve(); }
+      if (c === "next") { if (pending.length) { note("Say yes or no first.", true); return Promise.resolve(); } if (S.focus) skipped[S.focus] = true; S.force = ""; S.note = ""; step(); return Promise.resolve(); }
       if (c === "undo") return doUndo();
       if (c === "read") {
         if (pending.length) { note("Say yes or no first.", true); return Promise.resolve(); }
-        S.readout = readCard(info, fields) + " " + question(curField()); S.lastSpoken = ""; note("Reading the card."); turn(); return Promise.resolve();
+        S.readout = readCard(info, fields) + " " + S.q; S.lastSpoken = ""; note("Reading the card."); turn(); return Promise.resolve();
       }
       if (c === "mute" || c === "unmute") { setMute(c === "mute"); return Promise.resolve(); }
       if (c === "stop") { stopTalk(); note("Voice stopped. Finish the visit on the card."); return Promise.resolve(); }
       if (pending.length) { S.note = "Say yes or no first."; note(S.note, true); turn(); return Promise.resolve(); }
+      if (/^rec:/.test(S.focus)) return recHeard(t); // the client record: matched here, never sent to Claude
       S.busy = true; ui.talk(S); note("Listening to what you said…");
       return api({ action: "voiceTurn", session: session, transcript: t, focus: S.focus }).then(function (r) {
         S.busy = false;
@@ -247,14 +388,14 @@ var VoicePage = (function () {
       return api({ action: "voiceExchange", ticket: frag.ticket, eventId: frag.eventId }).then(function (r) {
         if (!r || !r.ok) { ui.status((r && r.message) || "Could not open this visit."); ui.dead(); return null; }
         session = r.session; lists = r.lists || {}; S.title = r.model.title; S.client = r.model.client;
-        info = r.model.info || {}; ui.info(infoLines(info));
+        info = r.model.info || {}; ui.info(infoLines(info)); if (r.record) recApply({ steps: r.record });
         ui.header(r.model.title, r.model.client); setFields(r.model.fields); ui.status(""); step();
         return r;
       }, function () { ui.status("Could not reach the server. Check the signal and tap Talk on the card again."); ui.dead(); return null; });
     }
 
     return { open: open, startTalk: startTalk, stopTalk: stopTalk, heard: heard, accept: accept, reject: reject, undo: doUndo, setMute: setMute, partial: partial, final: final,
-      state: S, fields: function () { return fields; }, pending: function () { return pending; }, session: function () { return session; }, skip: function () { if (S.focus) skipped[S.focus] = true; step(); } };
+      state: S, fields: function () { return fields; }, pending: function () { return pending; }, session: function () { return session; }, skip: function () { if (S.focus) skipped[S.focus] = true; S.force = ""; step(); }, focusRec: focusRec, record: function () { return rec; } };
   }
 
   // ---- The page ----
@@ -289,6 +430,15 @@ var VoicePage = (function () {
         var ul = $("info"); ul.innerHTML = "";
         lines.forEach(function (l) { var li = document.createElement("li"), a = document.createElement("span"), b = document.createElement("b"); a.textContent = l[0]; b.textContent = l[1]; li.appendChild(a); li.appendChild(b); ul.appendChild(li); });
         $("infoBox").hidden = !lines.length;
+      },
+      record: function (steps) {
+        steps.forEach(function (st) {
+          var li = $("rec-" + st.key); if (!li) return;
+          li.classList.toggle("off", !st.on);
+          li.querySelector("b").textContent = st.picked ? (st.key === "bill" || st.key === "address" || st.key === "location" || st.key === "appliance" ? ((st.items.filter(function (i) { return i.id === st.picked; })[0] || {}).label || st.picked) : st.picked) : "Not picked";
+          li.querySelector("small").textContent = st.on ? "" : st.why;
+          li.querySelector("button").disabled = !st.on;
+        });
       },
       fields: function (list) {
         var ul = $("fields"), prev = ul._seen || {}; ul.innerHTML = ""; ul._seen = {};
@@ -332,11 +482,12 @@ var VoicePage = (function () {
     $("yes").addEventListener("click", function () { ctl.accept(); });
     $("no").addEventListener("click", function () { ctl.reject(); });
     $("skip").addEventListener("click", function () { ctl.skip(); });
+    ["bill", "address", "location", "contact", "appliance", "job"].forEach(function (k) { $("rec-" + k).querySelector("button").addEventListener("click", function () { ctl.focusRec(k); }); });
     document.addEventListener("visibilitychange", function () { if (document.hidden && ctl.state.conv) { ctl.stopTalk(); ui.note("Voice stopped while the page was in the background. Tap Talk to go on."); } });
     window.__voice = ctl;
   }
 
-  var api = { parseFragment: parseFragment, redact: redact, norm: norm, command: command, money: money, fmt: fmt, readBack: readBack, plan: plan, nextField: nextField, question: question, infoLines: infoLines, readCard: readCard,
+  var api = { parseFragment: parseFragment, redact: redact, norm: norm, command: command, money: money, fmt: fmt, readBack: readBack, plan: plan, nextField: nextField, question: question, infoLines: infoLines, readCard: readCard, recMatch: recMatch, recVerb: recVerb, nextRecStep: nextRecStep, recQuestion: recQuestion, locKind: locKind, cleanVal: cleanVal,
     createApi: createApi, createController: createController, boot: boot, UNDO_MS: UNDO_MS };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else if (typeof window !== "undefined" && typeof document !== "undefined" && document.getElementById("talk")) boot();

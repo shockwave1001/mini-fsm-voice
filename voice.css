@@ -40,3 +40,9 @@ footer { position: sticky; bottom: 0; background: var(--bg); padding: 10px 16px 
 .talk.busy { opacity: .75; }
 .mute { width: 72px; min-height: 72px; padding: 0; font-size: 28px; background: var(--card); border: 1px solid var(--line); }
 [hidden] { display: none !important; }
+.recBox li { align-items: center; }
+.recBox li > div { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.recBox li b { text-align: left; }
+.recBox small { color: var(--muted); font-size: 14px; }
+.recBox li.off { opacity: .55; }
+.recBox li button { min-height: 44px; padding: 0 12px; }
