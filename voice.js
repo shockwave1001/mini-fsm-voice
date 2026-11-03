@@ -58,13 +58,14 @@ var VoicePage = (function () {
     if (!ps.length) out.push(["Phone", none]);
     ps.forEach(function (p) { out.push(["Phone", ([p.name, p.role].filter(Boolean).join(", ") || "Contact") + ": " + (p.phone || none)]); });
     out.push(["Bill to", i.billTo || none]);
+    if (i.cancelled) out.push(["Status", i.cancelled]); // inbox 269: a cancelled visit says who, why and when
     return out;
   }
   function digitsSpoken(s) { return String(s || "").replace(/[^0-9]/g, "").split("").join(" "); }
 
   // What the page says when asked to read the card: the client block first, then the filled fields, then the next question.
   function readCard(info, fields) {
-    var i = info || {}, none = "not on the card", parts = ["Client " + (i.client || none) + ".", "Address " + (i.address || none) + "."];
+    var i = info || {}, none = "not on the card", parts = (i.cancelled ? ["This visit was c" + String(i.cancelled).slice(1).replace(/\s*\u00b7\s*/g, ". ").replace(/\.?$/, ".")] : []).concat(["Client " + (i.client || none) + ".", "Address " + (i.address || none) + "."]);
     var ps = i.people || [];
     if (!ps.length) parts.push("Phone " + none + ".");
     ps.forEach(function (p) { parts.push("Phone for " + ([p.name, p.role].filter(Boolean).join(", ") || "contact") + (p.phone ? ": " + digitsSpoken(p.phone) : ", not on the card") + "."); });

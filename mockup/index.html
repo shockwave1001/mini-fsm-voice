@@ -818,7 +818,7 @@
           <option disabled value="En route · via field actions">En route · via field actions</option><option disabled value="In progress · via field actions">In progress · via field actions</option><option disabled value="Complete · via field actions" id="statusDone">Complete · via field actions</option>
           <option>Cancelled</option>
         </select></label>
-      <p class="visitLine" id="visitLine"></p>
+      <p class="visitLine" id="visitLine">1 job: 1 approved</p>
       <p class="visitLine" id="pushMark">Calendar, notes, list done</p>
       <label class="f"><span>Technician</span>
         <select id="tech"><option>Unassigned</option><option>Eli</option><option>+ Add technician</option></select></label>
@@ -3374,3 +3374,50 @@ function moneyModel(inp) {
 })();
 </script>
 <script>document.getElementById("readPlates").addEventListener("click", function () { document.getElementById("rpSheet").hidden = false; });</script>
+<div class="hsheet" id="cancelSheet" hidden role="dialog" aria-modal="true" aria-labelledby="cxTitle">
+  <div class="hback" data-cx-close></div>
+  <div class="hbox">
+    <div class="htop"><b id="cxTitle">Cancel this visit</b><button type="button" class="sm" data-cx-close>Keep visit</button></div>
+    <p class="muted rof">The visit stays on the list, greyed, with who cancelled, why and when. Nothing is charged.</p>
+    <div class="rform">
+      <label class="f"><span>Who cancelled</span><select id="cxWho"><option value="">Choose…</option><option>Ronnyl Esponal (super)</option><option>Client</option><option>Office</option><option>Us</option></select></label>
+      <label class="f"><span>Why</span><select id="cxWhy"><option value="">Choose…</option><option>Client cancelled</option><option>Rescheduling</option><option>Fixed it themselves</option><option>Went with someone else</option><option>No access</option><option>Our side</option><option>Other</option></select></label>
+      <label class="f"><span>A few words (needed for Other)</span><input type="text" id="cxNote" maxlength="200" placeholder="Optional"></label>
+      <div class="btns"><button type="button" id="cxGo">Cancel visit</button></div>
+      <p class="muted" id="cxMsg"></p>
+    </div>
+  </div>
+</div>
+<div class="hsheet" id="reopenSheet" hidden role="dialog" aria-modal="true" aria-labelledby="roTitle">
+  <div class="hback" data-cx-close></div>
+  <div class="hbox">
+    <div class="htop"><b id="roTitle">Reopen this visit</b><button type="button" class="sm" data-cx-close>Keep cancelled</button></div>
+    <p class="muted rof">Back to Scheduled, with the fee as it was before the cancel. For a visit cancelled by mistake.</p>
+    <div class="rform">
+      <label class="f"><span>Why it is reopened</span><input type="text" id="roWhy" maxlength="200" placeholder="Cancelled by mistake"></label>
+      <div class="btns"><button type="button" id="roGo">Reopen visit</button></div>
+      <p class="muted" id="roMsg"></p>
+    </div>
+  </div>
+</div>
+<script>
+// Inbox 269 (design only): picking Cancelled asks Who and Why; Reopen visit asks why. The card keeps the real logic.
+(function () {
+  var $ = function (q) { return document.querySelector(q); }, st = $("#status"), prev = "Scheduled";
+  function close() { $("#cancelSheet").hidden = true; $("#reopenSheet").hidden = true; }
+  st.addEventListener("change", function () {
+    if (st.value === "Cancelled" && prev !== "Cancelled") { st.value = prev; $("#cancelSheet").hidden = false; }
+    else if (prev === "Cancelled" && st.value !== "Cancelled") { st.value = "Cancelled"; $("#reopenSheet").hidden = false; }
+  });
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("[data-cx-close]")) close();
+    else if (e.target.closest("#cxGo")) {
+      if (!$("#cxWho").value || !$("#cxWhy").value) { $("#cxMsg").textContent = "Pick who cancelled and why."; return; }
+      prev = "Cancelled"; st.value = "Cancelled"; close();
+      var v = $("#visitLine"); v.textContent = "Cancelled by " + $("#cxWho").value + " \u00b7 " + $("#cxWhy").value + " \u00b7 Nov 3, 9:30 AM Eastern";
+    } else if (e.target.closest("#roGo")) {
+      prev = "Scheduled"; st.value = "Scheduled"; close(); $("#visitLine").textContent = "1 job: 1 approved";
+    }
+  });
+})();
+</script>
