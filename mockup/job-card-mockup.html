@@ -818,6 +818,8 @@
           <option disabled value="En route · via field actions">En route · via field actions</option><option disabled value="In progress · via field actions">In progress · via field actions</option><option disabled value="Complete · via field actions" id="statusDone">Complete · via field actions</option>
           <option>Cancelled</option>
         </select></label>
+      <p class="visitLine" id="visitLine"></p>
+      <p class="visitLine" id="pushMark">Calendar, notes, list done</p>
       <label class="f"><span>Technician</span>
         <select id="tech"><option>Unassigned</option><option>Eli</option><option>+ Add technician</option></select></label>
       <div class="f"><span>Scheduling</span>
@@ -841,6 +843,7 @@
       <button type="button" disabled>Start visit</button>
       <button type="button" disabled>Finish visit</button>
     </div>
+    <p class="rowWhy" id="actsWhy"></p>
     <div class="banner danger" id="blocked" hidden>⚠ Add at least one complete diagnosis to finish the visit.</div>
     <div class="banner ok" id="complete">Job complete · Invoice 1042</div>
     </div>
@@ -1676,7 +1679,7 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
   }
   document.addEventListener("input", refresh);
   document.addEventListener("change", refresh);
-  $("#status").addEventListener("change", () => { refresh(); log("Status changed to " + $("#status").value); });
+  $("#status").addEventListener("change", () => { refresh(); paint(); log("Status changed to " + $("#status").value); });
 
   // Field actions: On my way → Start visit → Finish visit → Reopen
   const acts = $$("#actions button"); let step = 0;
@@ -1744,6 +1747,13 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
     $("#statusDone").textContent = "Visit done · via field actions"; // display only; Complete reads only once the job is Closed
     $("#complete").hidden = step < 3; $("#reviewRow").hidden = step < 3; // item 63 (mockup): Ask for review once finished
     $("#statusPill").textContent = OW_WORKING ? "Working…" : $("#status").value.split(" · ")[0];
+    // Inbox 270: a cancelled visit keeps On my way, Start visit and Finish visit in place, greyed, with one line; nothing is pushed.
+    const cv = $("#status").value.split(" · ")[0] === "Cancelled";
+    if (cv) { acts.forEach((b) => { b.disabled = true; b.classList.remove("active"); }); $$("#compact .ab").forEach((b) => { b.disabled = true; b.classList.remove("active"); }); }
+    $("#actsWhy").textContent = cv ? "Visit cancelled. Change Field progress to reopen the visit." : "";
+    $("#visitLine").textContent = cv ? "1 job · visit cancelled, nothing charged" : "1 job: 1 undecided · all closed at Finish";
+    $("#pushMark").textContent = cv ? "Cancelled, nothing to send" : "Calendar, notes, list done";
+    if (cv) { $("#reviewRow").hidden = false; $("#askReview").disabled = true; $("#askReviewWhy").textContent = "No review for a cancelled visit"; $("#reviewRow").classList.add("off"); } else { $("#reviewRow").classList.remove("off"); $("#askReview").disabled = false; $("#askReviewWhy").textContent = ""; }
   }
   let OW_WORKING = false;
   // Waiver gate on Start visit (October 10): hazard needs a signature, damage warns with Start anyway.
