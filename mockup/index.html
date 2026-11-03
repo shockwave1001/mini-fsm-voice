@@ -1398,6 +1398,7 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
     action: ["Replaced part", "Cleaned and tested", "Adjusted and calibrated"],
     result: ["Works properly", "Partially working", "Unsuccessful"],
     supplier: ["Marcone", "Reliable", "Encompass", "Custom"],
+    cancel: ["Client cancelled", "Rescheduling", "Fixed it themselves", "Went with someone else", "No access", "Our side", "Other"],
     issue: ["Not cooling", "Not heating", "Not draining", "Not spinning", "Leaking water", "Not turning on", "Making loud noise", "Error code on display", "Burning smell", "Stopped mid-cycle", "Ice maker not working", "Door won't latch"]
   };
   let openCombo = null;
@@ -3449,7 +3450,7 @@ function moneyModel(inp) {
     <p class="muted rof">The visit stays on the list, greyed, with who cancelled, how, why and when. Nothing is charged.</p>
     <div class="rform">
       <label class="f"><span>Who cancelled</span><select id="cxWho"><option value="">Choose…</option><option>Ronnyl Esponal (super)</option><option>Client</option><option>Office</option><option>Us</option></select></label>
-      <label class="f"><span>Why</span><select id="cxWhy"><option value="">Choose…</option><option>Client cancelled</option><option>Rescheduling</option><option>Fixed it themselves</option><option>Went with someone else</option><option>No access</option><option>Our side</option><option>Other</option></select></label>
+      <label class="f"><span>Why</span><div class="combo"><input type="text" class="cin" data-list="cancel" id="cxWhy" placeholder="Pick or type a reason" autocomplete="off"><button class="cb" type="button" tabindex="-1" aria-label="Show options">▾</button><div class="cl" hidden></div></div></label>
       <label class="f"><span>How</span><select id="cxHow"><option value="">Choose…</option><option>Phone call</option><option>Text</option><option>Email</option><option>In person</option><option>On the calendar</option><option>Other</option></select></label>
       <label class="f"><span>A few words (needed for Other)</span><input type="text" id="cxNote" maxlength="200" placeholder="Optional"></label>
       <div class="btns"><button type="button" id="cxGo">Cancel visit</button></div>
