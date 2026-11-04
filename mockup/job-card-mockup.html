@@ -856,7 +856,6 @@
           <option>Cancelled</option>
         </select></label>
       <p class="visitLine" id="visitLine">1 job: 1 approved</p>
-      <p class="visitLine" id="pushMark">Calendar, notes, list done</p>
       <label class="f"><span>Technician</span>
         <select id="tech"><option>Unassigned</option><option>Eli</option><option>+ Add technician</option></select></label>
       <div class="f"><span>Scheduling</span>
@@ -1839,7 +1838,7 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
     if (cv) { acts.forEach((b) => { b.disabled = true; b.classList.remove("active"); }); $$("#compact .ab").forEach((b) => { b.disabled = true; b.classList.remove("active"); }); }
     $("#actsWhy").textContent = cv ? "Visit cancelled. Change Field progress to reopen the visit." : "";
     $("#visitLine").textContent = cv ? "1 job · visit cancelled, nothing charged" : "1 job: 1 undecided · all closed at Finish";
-    $("#pushMark").textContent = cv ? "Cancelled, nothing to send" : "Calendar, notes, list done";
+
     if (cv) { $("#reviewRow").hidden = false; $("#askReview").disabled = true; $("#askReviewWhy").textContent = "No review for a cancelled visit"; $("#reviewRow").classList.add("off"); } else { $("#reviewRow").classList.remove("off"); $("#askReview").disabled = false; $("#askReviewWhy").textContent = ""; }
   }
   let OW_WORKING = false;
