@@ -935,7 +935,7 @@
           <button type="button" class="lnk" data-link-close>Cancel</button>
         </div>
         <div class="g2 typeRow">
-          <label class="f"><span>Appointment type<button type="button" class="help" data-help="Appointment type" aria-label="What the appointment types mean">?</button></span><select class="jtype"><option>Free estimate</option><option>Paid estimate</option><option>Repair</option><option>Callback</option></select></label>
+          <label class="f"><span>Appointment type<button type="button" class="help" data-help="Appointment type" aria-label="What the appointment types mean">?</button></span><select class="jtype"><option>Free estimate</option><option>Paid estimate</option><option value="Repair">Repair / Parts installation</option><option>Callback</option></select></label>
           <div class="f typeNote"><span class="muted typeTxt" hidden></span></div>
         </div>
         <div class="g2 woRow">
@@ -1555,7 +1555,7 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
   const TYPE_NOTE = {
     "Free estimate": "Free estimate: no diagnostic fee. Labor and parts are charged through the Decision.",
     "Paid estimate": "",
-    "Repair": "Repair: the return visit on an open job. No new fee; the earlier fee and balance are settled through Billing.",
+    "Repair": "Repair / Parts installation: return to install ordered parts or perform the approved repair. No new fee; the earlier fee and balance are settled through Billing.", // wording Elad, November 4
     "Callback": "Callback: no diagnostic fee. Labor and parts can still be charged if Approved."
   };
   function paintType(it) {
@@ -2941,7 +2941,7 @@ function moneyModel(inp) {
     "Appointment type": {
       "Free estimate": ["A first look with no diagnostic fee.", "No fee. Labor and parts are charged through the Decision as on a paid estimate.", "Ends in a decision: Approved, Awaiting approval or Declined."],
       "Paid estimate": ["The usual first visit: diagnose and quote.", "Charges the diagnostic fee from the table, or the number on the event.", "Ends in a decision. The office can close or reopen the job at any time under the same number."],
-      "Repair": ["The return visit on an open job, parts in hand or not. Same job number.", "No new fee. Billing choice: Remaining balance (the default) credits the earlier fee and carries the earlier balance onto this invoice; Full price charges the repair fresh.", "Closes at Finish visit once the Result is in and every part is Installed."],
+      "Repair": ["Repair / Parts installation: return to install ordered parts or perform the approved repair. Same job number.", "No new fee. Billing choice: Remaining balance (the default) credits the earlier fee and carries the earlier balance onto this invoice; Full price charges the repair fresh.", "Closes at Finish visit once the Result is in and every part is Installed."],
       "Callback": ["Back for the same problem after a repair.", "No diagnostic fee. Labor and parts are charged if Approved; a number on the event is still charged.", "Open or closed by the Decision, like a paid estimate."]
     },
     "Billing": {
