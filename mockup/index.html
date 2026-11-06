@@ -398,6 +398,7 @@
   .rpItem .rpf { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .rpItem .rpf .f.unsure input { border-color: var(--warn); background: var(--warn-soft); }
   .rpItem .rpf .f.unsure > span::after { content: " · check"; color: var(--warn); font-weight: 600; }
+  .histBtn { min-height: 44px; min-width: 44px; } .histBtn:disabled { opacity: .45; } .machHistWhy { font-size: 12px; margin: 0; }
   .lnk { border: 0; background: transparent; color: var(--accent); font-size: 12px; font-weight: 600; padding: 2px 4px; flex: none; }
   .lnk.home, .lnk.indent { justify-self: start; padding-left: 58px; }
   .pk-contacts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
@@ -792,6 +793,7 @@
         <div class="pk-contacts" id="pkContacts"></div>
         <div class="pk-line"><span class="k">Service</span><span class="v" id="pkService"></span><button class="lnk" type="button" id="pkServiceBtn">Change</button></div>
         <div class="pk-line" id="pkAccessLine"><span class="k">Access</span><span class="v" id="pkAccessV">Ring 3B · call 15-30 mins before</span><input class="accIn" id="pkAccess" type="text" maxlength="200" placeholder="Buzzer, gate code, parking, call ahead" aria-label="Access notes" enterkeyhint="done" hidden><button class="lnk" type="button" id="pkAccessBtn">Change</button></div>
+        <div class="pk-line histLine"><span class="k">History</span><span class="v"><span class="rowWhy" id="pkHistWhy"></span></span><button class="lnk histBtn" type="button" id="pkHistBtn" disabled>Address history</button></div>
         <div class="pk-line" id="pkBillLine"><span class="k">Bill to</span><span class="v" id="pkBill"></span><button class="lnk" type="button" id="pkBillBtn">Change</button></div>
         <div class="pk-line" id="pkRcptLine" hidden><span class="k">Receipts</span><span class="v" id="pkRcpt"></span></div>
         <button class="lnk home" type="button" id="pkBillHome" hidden>Bill a company or landlord instead</button>
@@ -925,7 +927,8 @@
       <div class="item" data-item="Appliance">
         <div class="jline" role="button" tabindex="0" aria-expanded="true"><span class="jno new">New job</span><span class="jt"><span class="jpre"></span><button type="button" class="jname" aria-label="Rename this job"><span class="jnm">Appliance 1</span><svg class="jpen" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></button><input class="jnIn" type="text" maxlength="40" enterkeyhint="done" autocomplete="off" aria-label="Name for this job" hidden><span class="jpost"></span></span><span class="jst" hidden></span><span class="chev" aria-hidden="true">▼</span></div>
         <details class="jhist" hidden><summary></summary><ul></ul></details>
-        <div class="linkRow"><button type="button" class="lnk" data-link-job>Link to earlier job…</button><button type="button" class="lnk danger" data-remove>Remove</button></div>
+        <div class="linkRow"><button type="button" class="lnk" data-link-job>Link to earlier job…</button><button type="button" class="lnk histBtn" data-machine-hist disabled>History</button><button type="button" class="lnk danger" data-remove>Remove</button></div>
+        <p class="rowWhy machHistWhy">History shows once this job is saved with a job number.</p>
         <div class="linkBox" hidden>
           <div class="lh">Jobs at this address or for this client</div>
           <div class="lk"><div class="oj"><div class="m"><b><span>Job 1031</span> · Dryer 65 · LG · Works properly</b><small>Oct 3 visit · same address</small><small class="lkIss">Stops mid cycle, no heat</small></div><button type="button" class="sm" data-link-pick="closed">Link</button></div>
@@ -2101,6 +2104,7 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
     const addr = cur.oneOff || addrOf(cur.prop, cur.unit);
     if (addr) sv.appendChild(addrLink(addr, navAddr())); else sv.appendChild(el("span", "warnTxt", "Choose a location"));
     $("#pkServiceBtn").textContent = addr ? "Change" : "Choose";
+    $("#pkHistBtn").disabled = !addr; $("#pkHistWhy").textContent = addr ? "" : "Pick a service address to see its history."; // inbox 306
     const bl = $("#pkBillLine"), bv = $("#pkBill"); bv.innerHTML = "";
     bl.hidden = home && cur.billTo === "contact";
     $("#pkBillHome").hidden = !bl.hidden;
