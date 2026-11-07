@@ -407,6 +407,21 @@
   /* The map picker (October 13, item 18): a sheet at the foot with Waze, Google Maps, Apple Maps. */
   .tel.addr { white-space: normal; }
   /* Client record (inbox 277): four steps, top down. A step that cannot be used yet is greyed with one line saying what enables it. */
+  /* Place, People, Machines (inbox 305): one Place line always on the card; its three picks open one sheet. */
+  .placeBlk { display: grid; gap: 0; margin: 0 0 6px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .placeRow { display: grid; grid-template-columns: minmax(0, 1fr) 44px auto; gap: 6px; align-items: center; min-height: 44px; }
+  .placeRow::before { content: ""; grid-column: 2; grid-row: 1; }
+  .placeRow .placeLine { grid-column: 1; grid-row: 1; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .placeRow .placeLine.off { color: var(--muted); font-weight: 500; }
+  .placeRow .sm { grid-column: 3; grid-row: 1; min-height: 44px; min-width: 64px; }
+  .placeBlk .rowWhy { font-size: 12px; margin: 0; }
+  .placeBlk .rowWhy:empty { display: none; }
+  #placeSheet .mpin { max-height: 88vh; overflow: auto; }
+  #placeSheet h3 { margin: 0; font-size: 15px; }
+  #placeSheet .rdrow { display: flex; gap: 8px; }
+  #placeSheet .rdrow button { flex: 1; min-height: 46px; border-radius: 10px; font-size: 15px; font-weight: 600; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }
+  #placeSheet .recActs .sm { min-height: 44px; }
+  #placeSheet .recStep select { min-height: 44px; }
   .recStep { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
   .recStep:last-of-type { border-bottom: 0; padding-bottom: 0; }
   .recStep .recK { font-size: 11px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; }
@@ -783,6 +798,10 @@
       <div class="row"><button class="sm" type="button" id="reparseNo">Cancel</button><button class="sm go" type="button" id="reparseGo">Read again</button></div>
       <span class="msg" id="reparseMsg" hidden></span>
     </div>
+    <div class="placeBlk" id="placeBlk" role="group" aria-label="Place">
+    <div class="placeRow"><span class="placeLine" id="placeLine">URI, 12-34 56th St, Apt 6H</span><button class="sm" type="button" id="placeChange">Change</button></div>
+    <p class="rowWhy" id="placeWhy"></p>
+  </div>
     <div class="picker" id="picker">
       <div id="pkSearch" hidden>
         <div class="pk-in"><span aria-hidden="true">🔍</span><input id="pkQ" type="search" placeholder="Search client, address, unit, phone…" autocomplete="off" aria-label="Search clients"><button type="button" class="pk-x" id="pkClose" aria-label="Close and go back to the client" title="Close" hidden>✕</button></div>
@@ -791,9 +810,8 @@
       </div>
       <div class="pk-picked" id="pkPicked" hidden>
         <div class="pk-contacts" id="pkContacts"></div>
-        <div class="pk-line"><span class="k">Service</span><span class="v" id="pkService"></span><button class="lnk" type="button" id="pkServiceBtn">Change</button></div>
+        <div class="pk-line"><span class="k">Service</span><span class="v"><span id="pkService"></span><span class="rowWhy" id="pkHistWhy"></span></span><button class="lnk histBtn" type="button" id="pkHistBtn" disabled>History</button><button class="lnk" type="button" id="pkServiceBtn">Change</button></div>
         <div class="pk-line" id="pkAccessLine"><span class="k">Access</span><span class="v" id="pkAccessV">Ring 3B · call 15-30 mins before</span><input class="accIn" id="pkAccess" type="text" maxlength="200" placeholder="Buzzer, gate code, parking, call ahead" aria-label="Access notes" enterkeyhint="done" hidden><button class="lnk" type="button" id="pkAccessBtn">Change</button></div>
-        <div class="pk-line histLine"><span class="k">History</span><span class="v"><span class="rowWhy" id="pkHistWhy"></span></span><button class="lnk histBtn" type="button" id="pkHistBtn" disabled>Address history</button></div>
         <div class="pk-line" id="pkBillLine"><span class="k">Bill to</span><span class="v" id="pkBill"></span><button class="lnk" type="button" id="pkBillBtn">Change</button></div>
         <div class="pk-line" id="pkRcptLine" hidden><span class="k">Receipts</span><span class="v" id="pkRcpt"></span></div>
         <button class="lnk home" type="button" id="pkBillHome" hidden>Bill a company or landlord instead</button>
@@ -890,35 +908,7 @@
     <div class="banner warn gate" id="waiverGate" hidden><span id="waiverGateText"></span><div class="gacts"><button class="sm" type="button" id="gateSign">Get signature</button><button class="sm" type="button" id="gateAnyway" hidden>Start anyway</button></div></div>
   </div>
 
-  <details class="sec" id="recSec">
-    <summary><span>🗂</span><span class="t">Client record</span><span class="st ok" id="recSt">Set</span><span class="chev">▼</span></summary>
-    <div class="b">
-      <div class="recStep">
-        <div class="recK"><i>1</i>Bill to</div>
-        <select id="recBill" aria-label="Bill to"><option value="">Choose who pays</option><option selected>URI</option><option>Ronnyl Esponal (homeowner)</option></select>
-        <div class="recActs"><button class="sm" type="button" id="recBillAdd">Add</button><button class="sm" type="button" id="recBillChange">Change</button><button class="sm" type="button" id="recBillDel">Remove</button></div>
-        <p class="rowWhy" id="recBillWhy"></p>
-      </div>
-      <div class="recStep">
-        <div class="recK"><i>2</i>Service address</div>
-        <select id="recAddr" aria-label="Service address"><option value="">Choose a building</option><option selected>12-34 56th St, Queens</option><option>9 Test Ave, Brooklyn</option></select>
-        <div class="recActs"><button class="sm" type="button" id="recAddrAdd">Add</button><button class="sm" type="button" id="recAddrChange">Change</button><button class="sm" type="button" id="recAddrDel">Remove</button></div>
-        <p class="rowWhy" id="recAddrWhy"></p>
-      </div>
-      <div class="recStep">
-        <div class="recK"><i>3</i>Location at the address</div>
-        <select id="recLoc" aria-label="Location at the address"><option value="">Choose a unit or place</option><option>No unit (a house or the whole building)</option><option selected>Apt 6H</option><option>Apt 2A</option><option>Basement (place)</option></select>
-        <div class="recActs"><button class="sm" type="button" id="recLocAdd">Add</button><button class="sm" type="button" id="recLocChange">Change</button><button class="sm" type="button" id="recLocDel">Remove</button></div>
-        <p class="rowWhy" id="recLocWhy"></p>
-      </div>
-      <div class="recStep">
-        <div class="recK"><i>4</i>Contacts</div>
-        <div class="recPeople" id="recPeople"><div class="recPeopleHd">At Apt 6H</div><div class="recPerson on"><div class="who">Pat Lane<span class="tag">tenant</span></div><button class="sm" type="button">On this job</button><div class="sub2">212-555-0101</div><div class="pacts"><button class="sm" type="button">Change</button><button class="sm" type="button">Remove</button></div></div><div class="recPeopleHd">Elsewhere in the building (Apt 2A)</div><div class="recPerson"><div class="who">Lou Gray<span class="tag">super</span></div><button class="sm" type="button">Use on job</button><div class="pacts"><button class="sm" type="button">Change</button><button class="sm" type="button">Remove</button></div></div><div class="recPeopleHd">URI management</div><div class="recPerson"><div class="who">Maya Park<span class="tag">manager</span></div><button class="sm" type="button">Use on job</button><div class="sub2">212-555-0150</div><div class="pacts"><button class="sm" type="button" disabled>Change</button><button class="sm" type="button" disabled>Remove</button></div><div class="sub2">Edit management contacts in Setup.</div></div></div>
-        <div class="recActs"><button class="sm" type="button" id="recPerAdd">Add contact</button></div>
-        <p class="rowWhy" id="recPerWhy"></p>
-      </div>
-    </div>
-  </details>
+  
 
   <details class="sec" open id="applSec">
     <summary><span>⚙</span><span class="t">Appliance info</span><span class="badge">Required</span><span class="chev">▼</span></summary>
@@ -1223,6 +1213,30 @@
     <div class="mpaddr">Several parts on that image. Tap the one to fill.</div>
     <div id="partPickList" style="display:grid;gap:6px"></div>
     <button type="button" class="mpcancel" id="partPickCancel">Cancel</button>
+  </div>
+</div>
+<div class="mapPick" id="placeSheet" hidden role="dialog" aria-label="Place">
+  <div class="mpin">
+    <h3>Place</h3>
+<div class="recStep">
+        <div class="recK">Bill to</div>
+        <select id="recBill" aria-label="Bill to"><option value="">Choose who pays</option><option selected>URI</option><option>Ronnyl Esponal (homeowner)</option></select>
+        <div class="recActs"><button class="sm" type="button" id="recBillAdd">Add</button><button class="sm" type="button" id="recBillChange">Change</button><button class="sm" type="button" id="recBillDel">Remove</button></div>
+        <p class="rowWhy" id="recBillWhy"></p>
+      </div>
+<div class="recStep">
+        <div class="recK">Service address</div>
+        <select id="recAddr" aria-label="Service address"><option value="">Choose a building</option><option selected>12-34 56th St, Queens</option><option>9 Test Ave, Brooklyn</option></select>
+        <div class="recActs"><button class="sm" type="button" id="recAddrAdd">Add</button><button class="sm" type="button" id="recAddrChange">Change</button><button class="sm" type="button" id="recAddrDel">Remove</button></div>
+        <p class="rowWhy" id="recAddrWhy"></p>
+      </div>
+<div class="recStep">
+        <div class="recK">Location at the address</div>
+        <select id="recLoc" aria-label="Location at the address"><option value="">Choose a unit or place</option><option>No unit (a house or the whole building)</option><option selected>Apt 6H</option><option>Apt 2A</option><option>Basement (place)</option></select>
+        <div class="recActs"><button class="sm" type="button" id="recLocAdd">Add</button><button class="sm" type="button" id="recLocChange">Change</button><button class="sm" type="button" id="recLocDel">Remove</button></div>
+        <p class="rowWhy" id="recLocWhy"></p>
+      </div>
+    <div class="rdrow"><button type="button" class="go" id="placeDone">Done</button></div>
   </div>
 </div>
 <div class="mapPick recDlg" id="recDlg" hidden role="dialog" aria-label="Client record">
