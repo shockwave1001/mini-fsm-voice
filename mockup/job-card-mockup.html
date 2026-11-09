@@ -409,11 +409,11 @@
   /* Client record (inbox 277): four steps, top down. A step that cannot be used yet is greyed with one line saying what enables it. */
   /* Place, People, Machines (inbox 305): one Place line always on the card; its three picks open one sheet. */
   .placeBlk { display: grid; gap: 0; margin: 0 0 6px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-  .placeRow { display: grid; grid-template-columns: minmax(0, 1fr) 44px auto; gap: 6px; align-items: center; min-height: 44px; }
+  .placeRow { display: grid; grid-template-columns: minmax(0, 1fr) 44px auto; gap: 6px; align-items: center; min-height: 36px; }
   .placeRow::before { content: ""; grid-column: 2; grid-row: 1; }
   .placeRow .placeLine { grid-column: 1; grid-row: 1; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .placeRow .placeLine.off { color: var(--muted); font-weight: 500; }
-  .placeRow .sm { grid-column: 3; grid-row: 1; min-height: 44px; min-width: 64px; }
+  .placeRow .sm { grid-column: 3; grid-row: 1; min-height: 32px; min-width: 64px; }
   .placeBlk .rowWhy { font-size: 12px; margin: 0; }
   .placeBlk .rowWhy:empty { display: none; }
   #placeSheet .mpin { max-height: 88vh; overflow: auto; }
@@ -799,7 +799,7 @@
       <span class="msg" id="reparseMsg" hidden></span>
     </div>
     <div class="placeBlk" id="placeBlk" role="group" aria-label="Place">
-    <div class="placeRow"><span class="placeLine" id="placeLine">URI, 12-34 56th St, Apt 6H</span><button class="sm" type="button" id="placeChange">Change</button></div>
+    <div class="placeRow"><span class="placeLine" id="placeLine">Bill to: URI, 12-34 56th St, Apt 6H</span><button class="sm" type="button" id="placeChange">Change</button></div>
     <p class="rowWhy" id="placeWhy"></p>
   </div>
     <div class="picker" id="picker">
