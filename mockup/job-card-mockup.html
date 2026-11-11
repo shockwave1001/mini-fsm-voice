@@ -189,9 +189,15 @@
   .review { display: grid; gap: 6px; margin: 8px 0 4px; font-size: 13px; color: var(--muted); }
   .review .rvbig { width: auto; justify-self: start; min-height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-family: var(--display); font-size: 15px; font-weight: 700; cursor: pointer; } /* Elad, October 30: smaller, not a full-width bar */
   /* Greyed Ask for review (Elad, October 29): it stays on the card but takes one small line, the button beside its reason, until the job is Closed with nothing owed. */
-  .review.off { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; }
-  .review.off .rvbig { flex: none; width: auto; min-height: 30px; padding: 0 10px; border-radius: 8px; font-size: 13px; opacity: .5; cursor: default; }
-  .review.off .rowWhy { flex: 1; min-width: 0; font-size: 12px; line-height: 1.3; }
+  .review.off { display: flex; align-items: center; gap: 8px; }
+  .review.off .rvbig { flex: none; width: auto; min-height: 30px; padding: 0 10px; border-radius: 8px; font-size: 13px; opacity: .5; cursor: default; pointer-events: auto; } /* inbox 312: a tap says why */
+  /* Elad, November 10 (inbox 312): Ask for review and Client page share one line; the greyed chip's reason is in its title and a tap. */
+  .topLine { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; row-gap: 2px; margin: 4px 0 2px; font-size: 13px; color: var(--muted); }
+  .topLine .review { margin: 0; }
+  .topLine > .rowWhy { flex: 1 0 100%; font-size: 12px; line-height: 1.3; margin: 0; }
+  .review .cl2 { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .review .cl2 span { font-weight: 600; }
+  .review .cl2 .sm { flex: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 2px; border: 0; background: none; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
   .review .rvdone { display: flex; align-items: center; gap: 8px; }
   .review .rvdone .sm { margin-left: auto; flex: none; }
   .banner.gate { flex-wrap: wrap; } .banner .gacts { margin-left: auto; display: flex; gap: 6px; } .banner .gacts .sm { margin-left: 0; font-weight: 600; }
@@ -408,12 +414,14 @@
   .tel.addr { white-space: normal; }
   /* Client record (inbox 277): four steps, top down. A step that cannot be used yet is greyed with one line saying what enables it. */
   /* Place, People, Machines (inbox 305): one Place line always on the card; its three picks open one sheet. */
-  .placeBlk { display: grid; gap: 0; margin: 0 0 6px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  /* Elad, November 10 (inbox 312): plain text, no box; one line at 390px, the address cut with an ellipsis, the full line on a tap. */
+  .placeBlk { display: grid; gap: 0; margin: 0 0 2px; padding: 0 2px; }
   .placeRow { display: grid; grid-template-columns: minmax(0, 1fr) 44px auto; gap: 6px; align-items: center; min-height: 36px; }
   .placeRow::before { content: ""; grid-column: 2; grid-row: 1; }
-  .placeRow .placeLine { grid-column: 1; grid-row: 1; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .placeRow .placeLine { grid-column: 1; grid-row: 1; font-size: 14px; font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .placeRow .placeLine.full { white-space: normal; overflow-wrap: anywhere; }
   .placeRow .placeLine.off { color: var(--muted); font-weight: 500; }
-  .placeRow .sm { grid-column: 3; grid-row: 1; min-height: 32px; min-width: 64px; }
+  .placeRow .sm { grid-column: 3; grid-row: 1; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
   .placeBlk .rowWhy { font-size: 12px; margin: 0; }
   .placeBlk .rowWhy:empty { display: none; }
   #placeSheet .mpin { max-height: 88vh; overflow: auto; }
@@ -903,7 +911,11 @@
     <div class="banner danger" id="blocked" hidden>⚠ Add at least one complete diagnosis to finish the visit.</div>
     <div class="banner ok" id="complete">Job complete · Invoice 1042</div>
     </div>
-    <div class="review" id="reviewRow"><button type="button" class="rvbig" id="askReview">⭐ Ask for review</button><span class="rowWhy" id="askReviewWhy"></span><div class="rvdone" id="reviewDone" hidden><span id="reviewAsked"></span><button type="button" class="sm" id="askAgain">Ask again</button></div></div>
+    <div class="topLine" id="topLine">
+    <div class="review" id="reviewRow"><button type="button" class="rvbig" id="askReview">⭐ Ask for review</button><div class="rvdone" id="reviewDone" hidden><span id="reviewAsked"></span><button type="button" class="sm" id="askAgain">Ask again</button></div></div>
+    <div class="review" id="clientRow"><div class="cl2"><span>Client page</span><a class="sm" id="clientText" href="sms:&amp;body=Here%20is%20the%20page" target="_top">Send link</a><button type="button" class="sm" id="clientCopy">Copy link</button></div></div>
+    <span class="rowWhy" id="askReviewWhy" hidden></span>
+    </div>
     <div class="banner danger" id="blockedCompact" hidden>⚠ Add at least one complete diagnosis to finish the visit.</div>
     <div class="banner warn gate" id="waiverGate" hidden><span id="waiverGateText"></span><div class="gacts"><button class="sm" type="button" id="gateSign">Get signature</button><button class="sm" type="button" id="gateAnyway" hidden>Start anyway</button></div></div>
   </div>
@@ -1837,7 +1849,7 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
     const cw = $("#compact .ab"); cw.textContent = OW_WORKING ? "…" : "➤";
     if (OW_WORKING) { acts[0].textContent = "Working…"; acts[0].disabled = true; cw.disabled = true; }
     $("#statusDone").textContent = "Visit done · via field actions"; // display only; Complete reads only once the job is Closed
-    $("#complete").hidden = step < 3; $("#reviewRow").hidden = step < 3; // item 63 (mockup): Ask for review once finished
+    $("#complete").hidden = step < 3; // inbox 312: Ask for review stays on its line, greyed until the visit is finished
     $("#statusPill").textContent = OW_WORKING ? "Working…" : $("#status").value.split(" · ")[0];
     // Inbox 270: a cancelled visit keeps On my way, Start visit and Finish visit in place, greyed, with one line; nothing is pushed.
     const cv = $("#status").value.split(" · ")[0] === "Cancelled";
@@ -1845,7 +1857,8 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
     $("#actsWhy").textContent = cv ? "Visit cancelled. Change Field progress to reopen the visit." : "";
     $("#visitLine").textContent = cv ? "1 job · visit cancelled, nothing charged" : "1 job: 1 undecided · all closed at Finish";
 
-    if (cv) { $("#reviewRow").hidden = false; $("#askReview").disabled = true; $("#askReviewWhy").textContent = "No review for a cancelled visit"; $("#reviewRow").classList.add("off"); } else { $("#reviewRow").classList.remove("off"); $("#askReview").disabled = false; $("#askReviewWhy").textContent = ""; }
+    const rvWhy = cv ? "No review for a cancelled visit" : step < 3 ? "Opens when Closed and paid" : "";
+    $("#reviewRow").classList.toggle("off", !!rvWhy); $("#askReview").setAttribute("aria-disabled", rvWhy ? "true" : "false"); $("#askReview").title = rvWhy; $("#askReviewWhy").textContent = rvWhy; if (!rvWhy) $("#askReviewWhy").hidden = true;
   }
   let OW_WORKING = false;
   // Waiver gate on Start visit (October 10): hazard needs a signature, damage warns with Start anyway.
@@ -2779,7 +2792,9 @@ function moneyModel(inp) {
     }); };
     paintRvDemo(); $("#rvSheet").hidden = false;
   }
-  $("#askReview").addEventListener("click", openRv);
+  $("#askReview").addEventListener("click", () => { if ($("#reviewRow").classList.contains("off")) { const w = $("#askReviewWhy"); w.hidden = !w.hidden || !w.textContent; return; } openRv(); });
+  // Inbox 312: the place line is one line; a tap shows it whole, another cuts it again.
+  $("#placeLine").addEventListener("click", () => $("#placeLine").classList.toggle("full"));
   document.addEventListener("click", (e) => { if (e.target.closest("[data-rv-close]")) $("#rvSheet").hidden = true; if (e.target.closest("#rvAgain")) $("#rvSug").value = RV_DEMO.replace("highly recommend", "would use them again"); });
   function paintMedia() {
     const g = $("#mediaGrid"); g.innerHTML = ""; const items = mediaItems();
