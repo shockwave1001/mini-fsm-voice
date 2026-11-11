@@ -357,6 +357,7 @@
   /* Client picker (hierarchy: organization › property › unit › contact) */
   .who { flex: 1; min-width: 0; }
   .whoName { display: block; font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who { cursor: pointer; } /* inbox 314: a tap opens the Place sheet */
   .whoCrumb { display: none; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .head.collapsed .whoName { font-size: 17px; }
   .head.collapsed .whoCrumb { display: block; }
@@ -413,17 +414,8 @@
   /* The map picker (October 13, item 18): a sheet at the foot with Waze, Google Maps, Apple Maps. */
   .tel.addr { white-space: normal; }
   /* Client record (inbox 277): four steps, top down. A step that cannot be used yet is greyed with one line saying what enables it. */
-  /* Place, People, Machines (inbox 305): one Place line always on the card; its three picks open one sheet. */
-  /* Elad, November 10 (inbox 312): plain text, no box; one line at 390px, the address cut with an ellipsis, the full line on a tap. */
-  .placeBlk { display: grid; gap: 0; margin: 0 0 2px; padding: 0 2px; }
-  .placeRow { display: grid; grid-template-columns: minmax(0, 1fr) 44px auto; gap: 6px; align-items: center; min-height: 36px; }
-  .placeRow::before { content: ""; grid-column: 2; grid-row: 1; }
-  .placeRow .placeLine { grid-column: 1; grid-row: 1; font-size: 14px; font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-  .placeRow .placeLine.full { white-space: normal; overflow-wrap: anywhere; }
-  .placeRow .placeLine.off { color: var(--muted); font-weight: 500; }
-  .placeRow .sm { grid-column: 3; grid-row: 1; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
-  .placeBlk .rowWhy { font-size: 12px; margin: 0; }
-  .placeBlk .rowWhy:empty { display: none; }
+  /* Elad, November 11 (inbox 314): no Bill to line on the card; the head's name and address open the Place sheet, and the
+     head's second line says "Bill to <name>" when someone else pays. */
   #placeSheet .mpin { max-height: 88vh; overflow: auto; }
   #placeSheet h3 { margin: 0; font-size: 15px; }
   #placeSheet .rdrow { display: flex; gap: 8px; }
@@ -806,10 +798,6 @@
       <div class="row"><button class="sm" type="button" id="reparseNo">Cancel</button><button class="sm go" type="button" id="reparseGo">Read again</button></div>
       <span class="msg" id="reparseMsg" hidden></span>
     </div>
-    <div class="placeBlk" id="placeBlk" role="group" aria-label="Place">
-    <div class="placeRow"><span class="placeLine" id="placeLine">Bill to: URI, 12-34 56th St, Apt 6H</span><button class="sm" type="button" id="placeChange">Change</button></div>
-    <p class="rowWhy" id="placeWhy"></p>
-  </div>
     <div class="picker" id="picker">
       <div id="pkSearch" hidden>
         <div class="pk-in"><span aria-hidden="true">🔍</span><input id="pkQ" type="search" placeholder="Search client, address, unit, phone…" autocomplete="off" aria-label="Search clients"><button type="button" class="pk-x" id="pkClose" aria-label="Close and go back to the client" title="Close" hidden>✕</button></div>
@@ -2094,7 +2082,8 @@ Yelp: yelp.com/writeareview/biz/vF-sk5Mi7WcAeD6Y0tY-EQ</p>
   function updatePoTexts() {
     const bo = billOrg(), missing = woInputs().filter((i) => !i.value.trim()).length;
     const crumb = cur ? [cur.org && cur.org.short, cur.oneOff || (cur.prop && cur.prop.street), cur.unit].filter(Boolean) : [];
-    $("#whoCrumb").textContent = (crumb.join(" › ") || "No location yet") + (bo && bo.po.required && missing ? " · " + bo.po.label + " missing" : "");
+    const hn = cur && cur.contact ? cur.contact.name : "", billSfx = bo && bo.name !== hn ? " · Bill to " + bo.name : ""; // inbox 314
+    $("#whoCrumb").textContent = (crumb.join(" › ") || "No location yet") + billSfx + (bo && bo.po.required && missing ? " · " + bo.po.label + " missing" : "");
     const dp = $("#docPo");
     if (bo) { dp.hidden = false; dp.textContent = bo.po.required && missing ? bo.short + " needs a " + bo.po.label + " on every appliance before an invoice." : "Each appliance's " + bo.po.label + " prints on its own lines."; }
     else dp.hidden = true;
@@ -2793,8 +2782,10 @@ function moneyModel(inp) {
     paintRvDemo(); $("#rvSheet").hidden = false;
   }
   $("#askReview").addEventListener("click", () => { if ($("#reviewRow").classList.contains("off")) { const w = $("#askReviewWhy"); w.hidden = !w.hidden || !w.textContent; return; } openRv(); });
-  // Inbox 312: the place line is one line; a tap shows it whole, another cuts it again.
-  $("#placeLine").addEventListener("click", () => $("#placeLine").classList.toggle("full"));
+  // Inbox 314: no Bill to line; the head's name and address open the Place sheet.
+  $("#who").setAttribute("role", "button"); $("#who").tabIndex = 0;
+  $("#who").addEventListener("click", () => { $("#placeSheet").hidden = false; });
+  $("#placeDone").addEventListener("click", () => { $("#placeSheet").hidden = true; });
   document.addEventListener("click", (e) => { if (e.target.closest("[data-rv-close]")) $("#rvSheet").hidden = true; if (e.target.closest("#rvAgain")) $("#rvSug").value = RV_DEMO.replace("highly recommend", "would use them again"); });
   function paintMedia() {
     const g = $("#mediaGrid"); g.innerHTML = ""; const items = mediaItems();
