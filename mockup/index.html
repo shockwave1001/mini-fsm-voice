@@ -160,10 +160,14 @@
   .paylink .ibills .ibst { font-weight: 600; margin-left: auto; }
   .paylink .ibills .ibst.paid { color: var(--accent); }
   .paylink .ibills .lnk { font-size: 13px; }
-  .paylink .plqr { display: grid; justify-items: center; gap: 6px; padding: 6px 0; }
-  .paylink .plqr #paQrImg { background: #fff; padding: 8px; border-radius: 8px; line-height: 0; }
-  .paylink .plqr #paQrImg svg { width: 232px; height: 232px; display: block; }
-  .paylink .plqr span { font-size: 14px; text-align: center; }
+  /* Issue 318: Venmo or Zelle, one small block; each QR full screen with the amount, the job number and Done. */
+  .paylink .plb .sm[aria-disabled="true"] { opacity: .45; }
+  .paqr { position: fixed; inset: 0; z-index: 70; background: #fff; color: #111; display: grid; align-content: center; justify-items: center; gap: 10px; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); text-align: center; }
+  .paqr #paQrImg { line-height: 0; }
+  .paqr #paQrImg svg { width: min(300px, calc(100vw - 48px)); height: auto; aspect-ratio: 1; display: block; }
+  .paqr #paQrCap { font-size: 22px; font-variant-numeric: tabular-nums; }
+  .paqr #paQrJob { font-size: 16px; color: #444; }
+  .paqr #paQrClose { min-height: 48px; min-width: 160px; margin-top: 8px; font-size: 17px; font-weight: 600; background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); border-radius: 10px; }
   .paylink .depopen { width: 100%; }
   .paylink .depbox { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
   .paylink .depbox img { max-width: 100%; max-height: 160px; border-radius: 6px; justify-self: start; }
@@ -1159,13 +1163,14 @@
         <ul class="ibills" id="ibList" hidden></ul>
         <p class="muted" id="ibMsg" hidden></p>
       </div>
-      <div class="paylink" id="payApps" hidden>
-        <div class="plrow" id="vmRow"><div class="plh"><b>Pay by Venmo</b><span id="vmAmt"></span></div><p class="paline" id="vmLine"></p><div class="plb"><a class="sm pri" id="vmOpen" href="#" rel="noopener">Open</a><button type="button" class="sm" id="vmQr">QR code</button><a class="sm" id="vmText" href="#">Text</a><button type="button" class="sm" id="vmEmail">Email</button></div></div>
-        <div class="plrow" id="zlRow"><div class="plh"><b>Pay by Zelle</b><span id="zlAmt"></span></div><p class="paline" id="zlLine"></p><div class="plb plb3"><button type="button" class="sm pri" id="zlQr">QR code</button><a class="sm" id="zlText" href="#">Text</a><button type="button" class="sm" id="zlEmail">Email</button></div></div>
-        <div class="plqr" id="paQrBox" hidden><div id="paQrImg" role="img"></div><span id="paQrCap"></span><button type="button" class="sm" id="paQrClose">Close</button></div>
-        <p class="muted paline">Venmo and Zelle do not report back: record the payment when it arrives.</p>
+      <div class="paylink" id="payApps">
+        <!-- Issue 318 (November 12): Venmo and Zelle in one small block. Send to client texts both ways to pay (email
+             when there is no phone); each QR opens full screen. Record payment right below records it. -->
+        <div class="plrow"><div class="plh"><b>Venmo or Zelle</b><span id="paAmt"></span></div><div class="plb plb3"><a class="sm pri" id="paSend" href="#">Send to client</a><button type="button" class="sm" id="vmQr">Venmo QR</button><button type="button" class="sm" id="zlQr">Zelle QR</button></div></div>
+        <p class="paline" id="paWhy" hidden></p>
         <p class="muted" id="paMsg" hidden></p>
       </div>
+      <div class="paqr" id="paQrBox" role="dialog" aria-modal="true" aria-labelledby="paQrCap" hidden><div id="paQrImg" role="img"></div><b id="paQrCap"></b><span id="paQrJob"></span><button type="button" id="paQrClose">Done</button></div>
       <div class="item" id="payBox">
         <div class="ih"><span>Record payment</span></div>
         <div class="g2">
@@ -2623,27 +2628,32 @@ function moneyModel(inp) {
     apply(best); format(best);
     return M;
   }
-  // Item 65 (mockup): Venmo and Zelle under the iWallet rows, the plain balance. Open, Text and Email only log; the QR codes
-  // are real. Any tap picks the method for Record payment.
+  // Item 65 (mockup), one small block since issue 318: Venmo or Zelle with the plain balance once; Send to client opens
+  // Messages with both ways to pay (the card emails them when there is no phone); each QR full screen with the amount,
+  // the job number and Done. A QR tap picks the method for Record payment.
   const PA = { phone: "929-990-1132", venmo: "Global-Solutions", zelleQr: "https://enroll.zellepay.com/qr-codes?data=eyJuYW1lIjoiR2xvYmFsIFNvbHV0aW9ucyBBcHBsaWFuY2UgUmVwYWlyIFVzYSBJbmMiLCJhY3Rpb24iOiJwYXltZW50IiwidG9rZW4iOiJnbG9iYWwtc29sdXRpb25zLWFwcGxpYW5jZS1yZXBhaXIifQ==" };
+  const paJobNo = () => ($$("#appliances > .item").map((x) => x.dataset.jobNo).find(Boolean)) || "2041";
+  const paVenmo = (due) => "https://venmo.com/" + PA.venmo + "?txn=pay&amount=" + due.toFixed(2) + "&note=" + encodeURIComponent("Job " + paJobNo());
+  const paText = (due) => "Pay " + fmt(due) + " for Job " + paJobNo() + " by Venmo or Zelle.\nVenmo: " + paVenmo(due) + "\nZelle: " + PA.phone + ", note Job " + paJobNo();
   function paintPayAppsDemo(t) {
-    const due = t && t.due > 0.005 ? t.due : 0; $("#payApps").hidden = !due; if (!due) return;
-    const jobNo = ($$("#appliances > .item").map((x) => x.dataset.jobNo).find(Boolean)) || "2041", line = (w) => w + " " + PA.phone + ", amount " + fmt(due) + ", note Job " + jobNo;
-    $("#vmAmt").textContent = fmt(due); $("#zlAmt").textContent = fmt(due); $("#vmLine").textContent = line("Venmo"); $("#zlLine").textContent = line("Zelle");
-    $("#vmOpen").href = "https://venmo.com/" + PA.venmo + "?txn=pay&amount=" + due.toFixed(2) + "&note=" + encodeURIComponent("Job " + jobNo);
+    const due = t && t.due > 0.005 ? t.due : 0, people = owPeople(), send = $("#paSend");
+    $("#paAmt").textContent = fmt(due);
+    send.href = due && people.length ? smsHref(people[0].phone, paText(due)) : "#"; send.setAttribute("aria-disabled", due ? "false" : "true");
+    $("#vmQr").disabled = !due; $("#zlQr").disabled = !due;
+    $("#paWhy").textContent = due ? "" : "Nothing due on this visit."; $("#paWhy").hidden = !!due;
   }
   function showPaQr(kind) {
-    const t = totals(), jobNo = ($$("#appliances > .item").map((x) => x.dataset.jobNo).find(Boolean)) || "2041";
-    const url = kind === "venmo" ? "https://venmo.com/" + PA.venmo + "?txn=pay&amount=" + t.due.toFixed(2) + "&note=" + encodeURIComponent("Job " + jobNo) : PA.zelleQr, M = qrMatrix(url);
+    const due = totals().due, url = kind === "venmo" ? paVenmo(due) : PA.zelleQr, M = qrMatrix(url);
     if (!M) return; const n = M.length, q = 2; let d = ""; M.forEach((row, y) => row.forEach((c, x) => { if (c) d += "M" + (x + q) + " " + (y + q) + "h1v1h-1z"; }));
     $("#paQrImg").innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + (n + 2 * q) + " " + (n + 2 * q) + '" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path fill="#000" d="' + d + '"/></svg>';
-    $("#paQrCap").textContent = kind === "venmo" ? "Scan to pay " + fmt(t.due) + " by Venmo" : "Scan with the bank app to pay by Zelle"; $("#paQrBox").hidden = false;
+    $("#paQrCap").textContent = "Pay " + fmt(due) + " by " + (kind === "venmo" ? "Venmo" : "Zelle");
+    $("#paQrJob").textContent = "Job " + paJobNo() + (kind === "venmo" ? "" : ". Scan with the bank app, Zelle " + PA.phone);
+    $("#paQrBox").hidden = false; document.documentElement.style.overflow = "hidden";
   }
-  [["#vmOpen", "Venmo"], ["#vmQr", "Venmo"], ["#vmText", "Venmo"], ["#vmEmail", "Venmo"], ["#zlQr", "Zelle"], ["#zlText", "Zelle"], ["#zlEmail", "Zelle"]].forEach(([sel, m]) => $(sel).addEventListener("click", (e) => {
-    if ($(sel).tagName === "A") e.preventDefault(); $("#payMethod").value = m; log("Pay by " + m + ": " + $(sel).textContent);
-    if (sel === "#vmQr") showPaQr("venmo"); if (sel === "#zlQr") showPaQr("zelle");
-  }));
-  $("#paQrClose").addEventListener("click", () => { $("#paQrBox").hidden = true; });
+  $("#vmQr").addEventListener("click", () => { $("#payMethod").value = "Venmo"; showPaQr("venmo"); });
+  $("#zlQr").addEventListener("click", () => { $("#payMethod").value = "Zelle"; showPaQr("zelle"); });
+  $("#paSend").addEventListener("click", (e) => { e.preventDefault(); if ($("#paSend").getAttribute("aria-disabled") === "true") return; log("Pay by Venmo or Zelle: sent to client"); });
+  $("#paQrClose").addEventListener("click", () => { $("#paQrBox").hidden = true; document.documentElement.style.overflow = ""; });
   const plSay = (t) => { $("#plMsg").textContent = t; $("#plMsg").hidden = !t; };
   $("#depOpen").addEventListener("click", () => { $("#depAmt").value = round2(totals().due).toFixed(2); $("#depPhone").value = (owPeople()[0] || {}).phone || ""; $("#depBox").hidden = false; $("#depOpen").hidden = true; plSay(""); });
   $("#depCancel").addEventListener("click", () => { $("#depBox").hidden = true; $("#depOpen").hidden = false; });
